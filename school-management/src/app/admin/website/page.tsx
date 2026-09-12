@@ -62,8 +62,7 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
           <h2 className="card-title mb-4">Facilities (one per line)</h2>
           <input type="hidden" name="key" value="facilities" />
           <textarea name="value:facilities" className="input" rows={5}
-            defaultValue={Array.isArray(s.facilities) ? s.facilities.join("
-") : ""} />
+            defaultValue={Array.isArray(s.facilities) ? s.facilities.join("\n") : ""} />
           <p className="mt-2 text-xs text-slate-400">Tip: facilities typed one-per-line are converted to a list automatically.</p>
         </div>
 
