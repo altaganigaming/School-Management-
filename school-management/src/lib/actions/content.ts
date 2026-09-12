@@ -1,0 +1,62 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+type Table = "notices" | "documents" | "gallery" | "events" | "achievements";
+const PERM: Record<Table, string> = {
+  notices: "manage_notices",
+  documents: "manage_documents",
+  gallery: "manage_gallery",
+  events: "manage_events",
+  achievements: "manage_achievements",
+};
+
+export async function addContent(table: Table, formData: FormData) {
+  await requireAdmin(PERM[table]);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const payload: Record<string, any> = {
+    title: String(formData.get("title")),
+    created_by: user?.id,
+  };
+  const f = (k: string) => String(formData.get(k) || "");
+
+  if (table === "notices") Object.assign(payload, { body: f("body"), category: f("category") || "notice" });
+  if (table === "events") Object.assign(payload, { description: f("body"), event_date: f("event_date") });
+  if (table === "achievements") Object.assign(payload, { description: f("body"), achieved_on: f("event_date") });
+  if (table === "documents") Object.assign(payload, { audience: f("audience") || "public" });
+
+  // optional image/file upload
+  const file = formData.get("file") as File | null;
+  const bucket = table === "gallery" ? "gallery" : "documents";
+  if (file && file.size > 0) {
+    const path = `${Date.now()}-${file.name}`;
+    await supabase.storage.from(bucket).upload(path, file);
+    const url = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    if (table === "gallery") payload.image_url = url; else payload.file_url = url;
+  }
+  if (table === "gallery" && !payload.image_url) payload.image_url = f("image_url");
+
+  await supabase.from(table).insert(payload);
+  revalidatePath(`/admin/${table === "achievements" ? "achievements" : table}`);
+  redirect(`/admin/${table}?added=1`);
+}
+
+export async function deleteContent(table: Table, formData: FormData) {
+  await requireAdmin(PERM[table]);
+  const supabase = await createClient();
+  await supabase.from(table).delete().eq("id", String(formData.get("id")));
+  revalidatePath(`/admin/${table}`);
+}
+
+export async function toggleNotice(formData: FormData) {
+  await requireAdmin("manage_notices");
+  const supabase = await createClient();
+  const { data } = await supabase.from("notices").select("is_published").eq("id", String(formData.get("id"))).single();
+  await supabase.from("notices").update({ is_published: !data?.is_published }).eq("id", String(formData.get("id")));
+  revalidatePath("/admin/notices");
+}
