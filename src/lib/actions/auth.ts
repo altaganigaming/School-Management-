@@ -2,17 +2,33 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { usernameToEmail } from "@/lib/utils";
 
 export async function login(formData: FormData) {
-  const username = String(formData.get("username") || "");
+  const username = String(formData.get("username") || "").trim();
   const password = String(formData.get("password") || "");
   const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: usernameToEmail(username),
+  let email = username.includes("@") ? username.toLowerCase() : usernameToEmail(username);
+  let { data, error } = await supabase.auth.signInWithPassword({
+    email,
     password,
   });
+
+  if (error && !username.includes("@")) {
+    const admin = createAdminClient();
+    const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const match = users.users.find((user) =>
+      user.user_metadata?.username?.toLowerCase() === username.toLowerCase()
+      || user.email?.split("@")[0].toLowerCase() === username.toLowerCase()
+    );
+    if (match?.email) {
+      email = match.email;
+      ({ data, error } = await supabase.auth.signInWithPassword({ email, password }));
+    }
+  }
+
   if (error || !data.user) redirect("/login?error=1");
 
   const { data: profile } = await supabase
