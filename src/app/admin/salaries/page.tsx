@@ -24,7 +24,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         <h2 className="card-title sm:col-span-4">➕ Add Salary Record</h2>
         <label className="block"><span className="label">Teacher</span>
           <select name="teacher_id" className="input" required>
-            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {t.profiles?.full_name}</option>)}
+            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {t.profiles?.[0]?.full_name}</option>)}
           </select>
         </label>
         <label className="block"><span className="label">Month</span>

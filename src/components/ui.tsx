@@ -24,7 +24,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   );
 }
 
-export function StatCard({ label, value, hint, icon }: { label: string; value: React.ReactNode; hint?: string; icon?: string }) {
+export function StatCard({ label, value, hint, icon }: { label: string; value: React.ReactNode; hint?: React.ReactNode; icon?: string }) {
   return (
     <div className="card flex items-center gap-4">
       {icon && <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-2xl">{icon}</div>}

@@ -19,7 +19,8 @@ export async function login(formData: FormData) {
   if (error && !username.includes("@")) {
     const admin = createAdminClient();
     const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const match = users.users.find((user) =>
+    const userList = (users as { users?: Array<{ user_metadata?: { username?: string }; email?: string | null }> } | null)?.users ?? [];
+    const match = userList.find((user) =>
       user.user_metadata?.username?.toLowerCase() === username.toLowerCase()
       || user.email?.split("@")[0].toLowerCase() === username.toLowerCase()
     );
