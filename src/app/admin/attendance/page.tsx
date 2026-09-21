@@ -54,7 +54,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
               return (
                 <tr key={s.id}>
                   <td>{s.roll_no ?? "—"}</td>
-                  <td className="font-medium">{s.profiles?.full_name}</td>
+                  <td className="font-medium">{s.profiles?.[0]?.full_name ?? "—"}</td>
                   <td>
                     <div className="flex gap-3">
                       {["present", "absent", "late", "leave"].map((st) => (
