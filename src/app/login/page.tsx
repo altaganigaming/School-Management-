@@ -6,6 +6,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const s = await getSettings();
   const error = sp.error;
+  const next = sp.next?.startsWith("/admin") || sp.next?.startsWith("/portal") ? sp.next : "";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-900 via-primary-700 to-primary-500 p-4">
@@ -18,6 +19,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="text-sm text-primary-100">School Management System — Sign In</p>
         </div>
         <form action={login} className="card space-y-4 !bg-white/95">
+          <input type="hidden" name="next" value={next} />
           {error === "1" && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Invalid username or password.</div>}
           {error === "disabled" && <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">This account has been deactivated. Contact the school office.</div>}
           <div>

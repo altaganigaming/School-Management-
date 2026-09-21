@@ -8,6 +8,7 @@ import { usernameToEmail } from "@/lib/utils";
 export async function login(formData: FormData) {
   const username = String(formData.get("username") || "").trim();
   const password = String(formData.get("password") || "");
+  const next = String(formData.get("next") || "");
   const supabase = await createClient();
 
   let email = username.includes("@") ? username.toLowerCase() : usernameToEmail(username);
@@ -42,7 +43,12 @@ export async function login(formData: FormData) {
     await supabase.auth.signOut();
     redirect("/login?error=disabled");
   }
-  redirect(profile.role === "student" ? "/portal" : "/admin");
+  const destination = next.startsWith("/admin") && profile.role !== "student"
+    ? next
+    : next.startsWith("/portal") && profile.role === "student"
+      ? next
+      : profile.role === "student" ? "/portal" : "/admin";
+  redirect(destination);
 }
 
 export async function logout() {

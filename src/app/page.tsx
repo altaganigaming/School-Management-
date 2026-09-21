@@ -25,20 +25,20 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <>
       <SiteHeader />
       {/* HERO */}
-      <section className="relative flex min-h-[85vh] items-center justify-center overflow-hidden text-center text-white">
+      <section className="relative flex min-h-[min(85vh,720px)] items-center justify-center overflow-hidden px-4 text-center text-white sm:px-0">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-950/80 via-primary-900/60 to-primary-700/40" />
         {s.hero_image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={s.hero_image} alt="School campus" fetchPriority="high" className="absolute inset-0 -z-10 h-full w-full object-cover" />
         )}
-        <div className="page-wrap py-24">
-          <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/15 text-4xl font-bold backdrop-blur ring-4 ring-white/20">
+        <div className="page-wrap py-16 sm:py-24">
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/15 text-3xl font-bold backdrop-blur ring-4 ring-white/20 sm:mb-6 sm:h-24 sm:w-24 sm:text-4xl">
             {s.logo_url ? <img src={s.logo_url} className="h-full w-full rounded-full object-cover" alt="logo" /> : (s.school_name || "S")[0]}
           </div>
-          <h1 className="mx-auto max-w-3xl font-display text-4xl font-bold leading-tight sm:text-6xl">{s.school_name}</h1>
-          <p className="mt-4 text-lg text-primary-100">{s.tagline}</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href="/#admissions" className="btn bg-white px-6 py-3 text-primary-700 hover:bg-primary-50">Apply for Admission</Link>
+          <h1 className="mx-auto max-w-3xl font-display text-3xl font-bold leading-tight sm:text-6xl">{s.school_name}</h1>
+          <p className="mt-3 text-base text-primary-100 sm:mt-4 sm:text-lg">{s.tagline}</p>
+          <div className="mx-auto mt-7 grid w-full max-w-sm gap-3 sm:mt-8 sm:flex sm:max-w-none sm:justify-center">
+            <Link href="#admissions" className="btn bg-white px-6 py-3 text-primary-700 hover:bg-primary-50">Apply for Admission</Link>
             <Link href="/login" className="btn border border-white/40 px-6 py-3 text-white hover:bg-white/10">Portal Login</Link>
           </div>
         </div>
