@@ -3,17 +3,19 @@ import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/auth";
 import SiteHeader from "@/components/site-header";
 import SiteFooter from "@/components/site-footer";
+import { submitAdmission } from "@/lib/actions/content";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
+  const sp = await searchParams;
   const s = await getSettings();
   const supabase = await createClient();
   const [{ data: notices }, { data: events }, { data: gallery }, { data: teachers }, { data: achievements }] = await Promise.all([
     supabase.from("notices").select("*").eq("is_published", true).order("published_at", { ascending: false }).limit(5),
     supabase.from("events").select("*").order("event_date", { ascending: false }).limit(3),
     supabase.from("gallery").select("*").order("created_at", { ascending: false }).limit(6),
-    supabase.from("teachers").select("*, profiles(full_name, avatar_url), subjects(name)").order("employee_id"),
+    supabase.from("teachers").select("id, qualification, profiles(full_name, avatar_url), subjects(name)").order("employee_id").limit(12),
     supabase.from("achievements").select("*").order("achieved_on", { ascending: false }).limit(4),
   ]);
   const facilities: string[] = s.facilities || [];
@@ -27,7 +29,7 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary-950/80 via-primary-900/60 to-primary-700/40" />
         {s.hero_image && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={s.hero_image} alt="School campus" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+          <img src={s.hero_image} alt="School campus" fetchPriority="high" className="absolute inset-0 -z-10 h-full w-full object-cover" />
         )}
         <div className="page-wrap py-24">
           <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/15 text-4xl font-bold backdrop-blur ring-4 ring-white/20">
@@ -106,15 +108,15 @@ export default async function HomePage() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {(teachers || []).map((t) => (
             <div key={t.id} className="card text-center">
-              {t.profiles?.avatar_url ? (
-                <img src={t.profiles.avatar_url} alt={t.profiles.full_name} className="mx-auto h-20 w-20 rounded-full object-cover ring-4 ring-primary-100" />
+              {t.profiles?.[0]?.avatar_url ? (
+                <img src={t.profiles[0].avatar_url} alt={t.profiles[0].full_name} loading="lazy" className="mx-auto h-20 w-20 rounded-full object-cover ring-4 ring-primary-100" />
               ) : (
                 <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-bold text-primary-700">
-                  {(t.profiles?.full_name || "T")[0]}
+                  {(t.profiles?.[0]?.full_name || "T")[0]}
                 </div>
               )}
-              <div className="mt-3 font-bold text-slate-900">{t.profiles?.full_name}</div>
-              <div className="text-sm text-primary-600">{t.subjects?.name || "Faculty"}</div>
+              <div className="mt-3 font-bold text-slate-900">{t.profiles?.[0]?.full_name}</div>
+              <div className="text-sm text-primary-600">{t.subjects?.[0]?.name || "Faculty"}</div>
               <div className="text-xs text-slate-400">{t.qualification}</div>
             </div>
           ))}
@@ -148,7 +150,7 @@ export default async function HomePage() {
         </div>
         <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3">
           {(gallery || []).map((g) => (
-            <img key={g.id} src={g.image_url} alt={g.title} className="h-52 w-full rounded-xl object-cover hover:scale-[1.02] transition" />
+            <img key={g.id} src={g.image_url} alt={g.title} loading="lazy" className="h-52 w-full rounded-xl object-cover hover:scale-[1.02] transition" />
           ))}
         </div>
       </section>
@@ -187,6 +189,17 @@ export default async function HomePage() {
           <div className="p-10 md:w-2/3">
             <h3 className="font-bold text-slate-900">How to Apply</h3>
             <p className="mt-3 leading-relaxed text-slate-600">{s.admission_info}</p>
+            {sp.admission === "sent" && <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Application submitted. The school office will contact you soon.</p>}
+            {sp.admission === "error" && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Please fill in the required fields.</p>}
+            <form action={submitAdmission} className="mt-6 grid gap-3 sm:grid-cols-2">
+              <input name="student_name" className="input" placeholder="Student name *" required />
+              <input name="parent_name" className="input" placeholder="Parent name" />
+              <input name="email" type="email" className="input" placeholder="Email *" required />
+              <input name="phone" type="tel" className="input" placeholder="Phone *" required />
+              <input name="class_name" className="input" placeholder="Class applying for" />
+              <input name="message" className="input" placeholder="Message" />
+              <button className="btn-primary sm:col-span-2">Submit Admission Enquiry</button>
+            </form>
             <div className="mt-6 rounded-xl bg-primary-50 p-4 text-sm text-primary-800">
               📞 Contact the school office at {contact.phone} for enquiries.
             </div>

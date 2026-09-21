@@ -27,6 +27,20 @@ create table public.school_settings (
   value jsonb not null
 );
 
+create table public.admission_inquiries (
+  id uuid primary key default gen_random_uuid(),
+  student_name text not null,
+  parent_name text,
+  email text not null,
+  phone text not null,
+  class_name text,
+  message text,
+  status text not null default 'new' check (status in ('new','contacted','closed')),
+  created_at timestamptz not null default now()
+);
+
+alter table public.admission_inquiries enable row level security;
+
 -- ---------- CLASSES & SECTIONS ----------
 create table public.classes (
   id    uuid primary key default gen_random_uuid(),
@@ -343,6 +357,7 @@ alter table public.documents enable row level security;
 alter table public.gallery enable row level security;
 alter table public.events enable row level security;
 alter table public.achievements enable row level security;
+alter table public.admission_inquiries enable row level security;
 
 -- ---------- profiles ----------
 create policy "profiles select own or admin"
@@ -476,6 +491,9 @@ create policy "results admin write"
   on public.exam_results for all using (has_permission('manage_exams')) with check (has_permission('manage_exams'));
 
 -- ---------- content ----------
+create policy "public admission insert" on public.admission_inquiries for insert with check (true);
+create policy "admin admission read" on public.admission_inquiries for select using (is_active_admin());
+
 create policy "notices public read"
   on public.notices for select using (is_published or is_active_admin());
 create policy "notices admin write"

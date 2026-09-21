@@ -5,11 +5,12 @@ import { saveSettings } from "@/lib/actions/accounts";
 export const dynamic = "force-dynamic";
 
 const TEXT_FIELDS = [
-  ["school_name", "School Name"], ["tagline", "Tagline"], ["logo_url", "Logo Image URL"],
-  ["hero_image", "Hero Background Image URL"], ["about", "About Text"],
+  ["school_name", "School Name"], ["tagline", "Tagline"],
+  ["about", "About Text"],
   ["vision", "Vision"], ["mission", "Mission"], ["principal_message", "Principal's Message (HTML allowed)"],
   ["admission_info", "Admission Information"],
 ];
+const MEDIA_FIELDS = [["logo_url", "Logo"], ["hero_image", "Hero Background Image"], ["favicon_url", "Favicon"]];
 const CONTACT_FIELDS = [
   ["address", "Address"], ["phone", "Phone"], ["email", "Email"], ["map_embed", "Google Maps Embed URL"],
 ];
@@ -39,6 +40,16 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
                 ) : (
                   <input name={`value:${key}`} className="input" defaultValue={s[key] ?? ""} />
                 )}
+              </label>
+            ))}
+          </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {MEDIA_FIELDS.map(([key, label]) => (
+              <label key={key} className="block">
+                <span className="label">{label} (choose file)</span>
+                <input type="file" name={`file:${key}`} accept={key === "favicon_url" ? "image/png,image/x-icon,image/svg+xml" : "image/*"} className="input" />
+                <input name={`value:${key}`} className="input mt-2" placeholder="Or paste image URL" defaultValue={s[key] ?? ""} />
+                <input type="hidden" name="key" value={key} />
               </label>
             ))}
           </div>

@@ -95,6 +95,7 @@ export async function updateProfileRecord(formData: FormData) {
 
 export async function toggleAccount(formData: FormData) {
   const targetRole = String(formData.get("role")) as Role;
+  if (targetRole === "super_admin") redirect("/admin/users?protected=1");
   await assertCanManage(targetRole, targetRole === "student" ? "manage_students" : "manage_faculty");
   const admin = createAdminClient();
   const userId = String(formData.get("user_id"));
@@ -143,7 +144,18 @@ export async function saveSettings(formData: FormData) {
   const supabase = await createClient();
   const keys = formData.getAll("key").map(String);
   for (const key of keys) {
-    const raw = formData.get(`value:${key}`) as string;
+    const raw = String(formData.get(`value:${key}`) || "");
+    const media = formData.get(`file:${key}`) as File | null;
+    if (media && media.size > 0) {
+      const admin = createAdminClient();
+      const path = `website/${key}-${Date.now()}-${media.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+      const upload = await admin.storage.from("gallery").upload(path, media, { upsert: true });
+      if (!upload.error) {
+        const url = admin.storage.from("gallery").getPublicUrl(path).data.publicUrl;
+        await supabase.from("school_settings").upsert({ key, value: url });
+        continue;
+      }
+    }
     let value: any = raw;
     if (key === "facilities") {
       value = raw.split("\n").map((f) => f.trim()).filter(Boolean);

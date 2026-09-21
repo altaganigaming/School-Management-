@@ -17,6 +17,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       {sp.created && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Account created: <b>@{sp.created}</b></div>}
       {sp.error === "exists" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Username already taken.</div>}
       {(sp.reset || sp.updated || sp.deleted) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Done.</div>}
+      {sp.protected && <div className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">The super admin account is protected and cannot be deactivated.</div>}
 
       {/* CREATE ACCOUNT FORM */}
       <form action={createAccount} className="card mb-8">
@@ -64,11 +65,12 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                         <button className="btn-primary btn-sm">Set</button>
                       </form>
                     </details>
-                    <form action={toggleAccount}>
+                    {u.role !== "super_admin" && <form action={toggleAccount}>
                       <input type="hidden" name="user_id" value={u.id} /><input type="hidden" name="role" value={u.role} />
                       <input type="hidden" name="active" value={u.is_active ? "false" : "true"} />
                       <button className={u.is_active ? "btn-danger btn-sm" : "btn-primary btn-sm"}>{u.is_active ? "Deactivate" : "Reactivate"}</button>
-                    </form>
+                    </form>}
+                    {u.role === "super_admin" && <span className="btn-secondary btn-sm cursor-default">Protected</span>}
                     {u.role !== "super_admin" && (
                       <form action={deleteAccount} onSubmit={undefined}>
                         <input type="hidden" name="user_id" value={u.id} />

@@ -16,6 +16,8 @@ export default async function SiteHeader() {
   ];
 
   return (
+    <>
+    {settings.favicon_url && <link rel="icon" href={settings.favicon_url} />}
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="page-wrap flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2.5">
@@ -44,5 +46,6 @@ export default async function SiteHeader() {
         </div>
       </div>
     </header>
+    </>
   );
 }

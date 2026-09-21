@@ -15,6 +15,24 @@ const PERM: Record<Table, string> = {
   achievements: "manage_achievements",
 };
 
+export async function submitAdmission(formData: FormData) {
+  const supabase = await createClient();
+  const value = (key: string) => String(formData.get(key) || "").trim();
+  const studentName = value("student_name");
+  const email = value("email");
+  const phone = value("phone");
+  if (!studentName || !email || !phone) redirect("/?admission=error#admissions");
+  await supabase.from("admission_inquiries").insert({
+    student_name: studentName,
+    parent_name: value("parent_name"),
+    email,
+    phone,
+    class_name: value("class_name"),
+    message: value("message"),
+  });
+  redirect("/?admission=sent#admissions");
+}
+
 export async function addContent(table: Table, formData: FormData) {
   await requireAdmin(PERM[table]);
   const supabase = await createClient();
@@ -34,7 +52,7 @@ export async function addContent(table: Table, formData: FormData) {
   const file = formData.get("file") as File | null;
   const bucket = table === "gallery" ? "gallery" : "documents";
   if (file && file.size > 0) {
-    const path = `${Date.now()}-${file.name}`;
+    const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
     await supabase.storage.from(bucket).upload(path, file);
     const url = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
     if (table === "gallery") payload.image_url = url; else payload.file_url = url;
