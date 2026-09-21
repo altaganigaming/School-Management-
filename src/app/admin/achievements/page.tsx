@@ -22,7 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         <label className="block"><span className="label">Date</span><input name="event_date" type="date" className="input" /></label>
         <div className="flex items-end"><button className="btn-primary w-full">Publish</button></div>
         <label className="block sm:col-span-2 lg:col-span-4"><span className="label">Description</span>
-          <textarea name="body" className="input" rows=2 /></label>
+          <textarea name="body" className="input" rows={2} /></label>
       </form>
 
       <div className="card overflow-x-auto">
