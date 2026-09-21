@@ -37,7 +37,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.full_name}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.[0]?.full_name}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Starting Month</span>
@@ -56,7 +56,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.full_name}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.[0]?.full_name}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Month</span>
@@ -80,7 +80,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
               <tbody>
                 {(records || []).map((r) => (
                   <tr key={r.id}>
-                    <td className="text-xs">{students?.find((s) => s.id === r.student_id)?.profiles?.full_name ?? r.student_id.slice(0, 6)}</td>
+                    <td className="text-xs">{students?.find((s) => s.id === r.student_id)?.profiles?.[0]?.full_name ?? r.student_id.slice(0, 6)}</td>
                     <td className="text-xs">{monthLabel(r.month)}</td>
                     <td className="text-xs">{formatCurrency(r.amount)}</td>
                     <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>
@@ -106,8 +106,8 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
               return (
                 <tr key={s.id}>
                   <td className="font-mono text-xs">{s.admission_no}</td>
-                  <td className="font-medium">{s.profiles?.full_name}</td>
-                  <td className="text-xs">{s.classes ? `${s.classes.name}-${s.classes.section}` : "—"}</td>
+                  <td className="font-medium">{s.profiles?.[0]?.full_name}</td>
+                  <td className="text-xs">{s.classes?.[0] ? `${s.classes[0].name}-${s.classes[0].section}` : "—"}</td>
                   <td>{formatCurrency(s.monthly_fee)}</td>
                   <td className="text-emerald-600">{formatCurrency(paid)}</td>
                   <td className={pending > 0 ? "text-amber-600 font-semibold" : "text-slate-400"}>{formatCurrency(pending)}</td>
