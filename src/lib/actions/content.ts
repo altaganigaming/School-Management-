@@ -35,8 +35,15 @@ export async function submitAdmission(formData: FormData) {
 
 export async function updateAdmissionStatus(formData: FormData) {
   await requireAdmin("manage_admissions");
-  const supabase = await createClient();
-  await supabase.from("admission_inquiries").update({ status: String(formData.get("status")) }).eq("id", String(formData.get("id")));
+  const admin = createAdminClient();
+  await admin.from("admission_inquiries").update({ status: String(formData.get("status")) }).eq("id", String(formData.get("id")));
+  revalidatePath("/admin/admissions");
+}
+
+export async function deleteAdmission(formData: FormData) {
+  await requireAdmin("manage_admissions");
+  const admin = createAdminClient();
+  await admin.from("admission_inquiries").delete().eq("id", String(formData.get("id")));
   revalidatePath("/admin/admissions");
 }
 

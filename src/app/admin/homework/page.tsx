@@ -6,11 +6,20 @@ export const dynamic = "force-dynamic";
 
 async function addHomework(formData: FormData) {
   "use server";
+  const { requireAdmin: require } = await import("@/lib/auth");
+  const profile = await require("manage_homework");
   const { createClient: cc } = await import("@/lib/supabase/server");
   const supabase = await cc();
+  const classId = String(formData.get("class_id"));
+  if (profile.role === "teacher") {
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+    const { data: teacher } = await admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single();
+    if (!((teacher?.assigned_classes || []) as string[]).includes(classId)) return;
+  }
   const { data: { user } } = await supabase.auth.getUser();
   await supabase.from("homework").insert({
-    class_id: String(formData.get("class_id")),
+    class_id: classId,
     subject_id: String(formData.get("subject_id")) || null,
     title: String(formData.get("title")),
     description: String(formData.get("description")),
@@ -34,11 +43,15 @@ export default async function HomeworkPage() {
   const me = await getProfile();
   await requireAdmin("manage_homework");
   const supabase = await createClient();
-  const [{ data: classes }, { data: subjects }, { data: homework }] = await Promise.all([
+  const [{ data: classes }, { data: subjects }, { data: homework }, { data: teacher }] = await Promise.all([
     supabase.from("classes").select("*").order("name"),
     supabase.from("subjects").select("*").order("name"),
     supabase.from("homework").select("*, classes(name, section), subjects(name)").order("created_at", { ascending: false }),
+    me?.role === "teacher" ? supabase.from("teachers").select("assigned_classes").eq("profile_id", me.id).single() : Promise.resolve({ data: null }),
   ]);
+  const visibleClasses = me?.role === "teacher"
+    ? classes?.filter((c) => ((teacher?.assigned_classes || []) as string[]).includes(c.id))
+    : classes;
 
   return (
     <>
@@ -46,7 +59,7 @@ export default async function HomeworkPage() {
       <form action={addHomework} className="card mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <label className="block"><span className="label">Class</span>
           <select name="class_id" className="input" required>
-            {(classes || []).map((c) => <option key={c.id} value={c.id}>{c.name} - {c.section}</option>)}
+            {(visibleClasses || []).map((c) => <option key={c.id} value={c.id}>{c.name} - {c.section}</option>)}
           </select></label>
         <label className="block"><span className="label">Subject</span>
           <select name="subject_id" className="input">

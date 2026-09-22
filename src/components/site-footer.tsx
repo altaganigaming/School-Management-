@@ -4,7 +4,11 @@ export default async function SiteFooter() {
   const s = await getSettings();
   const contact = s.contact || {};
   return (
-    <footer className="mt-20 bg-slate-900 text-slate-300">
+    <>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 py-2 text-[10px] shadow-[0_-4px_18px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+      {[['/downloads', '⬇', 'Downloads'], ['/admin', '👤', 'Account'], ['/login', '🔐', 'Login'], ['/gallery', '▦', 'Gallery'], ['/#admissions', '📝', 'Admission']].map(([href, icon, label]) => <a key={href} href={href} className="flex min-w-0 flex-col items-center gap-0.5 text-slate-600"><span className="text-base">{icon}</span><span className="truncate">{label}</span></a>)}
+    </nav>
+    <footer className="mt-20 bg-slate-900 pb-20 text-slate-300 md:pb-0">
       <div className="page-wrap grid gap-10 py-14 md:grid-cols-3">
         <div>
           <div className="font-display text-xl font-bold text-white">{s.school_name}</div>
@@ -31,5 +35,6 @@ export default async function SiteFooter() {
         © {new Date().getFullYear()} {s.school_name}. All rights reserved.
       </div>
     </footer>
+    </>
   );
 }

@@ -6,7 +6,13 @@ export const dynamic = "force-dynamic";
 
 async function markAttendance(formData: FormData) {
   "use server";
+  const profile = await requireAdmin("manage_attendance");
   const admin = createAdminClient();
+  const classId = String(formData.get("class_id") || "");
+  if (profile.role === "teacher") {
+    const { data: teacher } = await admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single();
+    if (!((teacher?.assigned_classes || []) as string[]).includes(classId)) return;
+  }
   const entries = formData.getAll("entry") as string[]; // "studentId:status"
   const date = String(formData.get("date"));
   const rows = entries.filter((e) => e.includes(":")).map((e) => {
@@ -19,20 +25,31 @@ async function markAttendance(formData: FormData) {
 }
 
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  await requireAdmin("manage_attendance");
+  const profile = await requireAdmin("manage_attendance");
   const sp = await searchParams;
   const date = sp.date || new Date().toISOString().slice(0, 10);
   const admin = createAdminClient();
-  const { data: classes } = await admin.from("classes").select("*").order("name");
-  const classId = sp.class_id || classes?.[0]?.id;
+  const { data: allClasses } = await admin.from("classes").select("*").order("name");
+  const { data: teacher } = profile.role === "teacher"
+    ? await admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single()
+    : { data: null };
+  const assigned = profile.role === "teacher" ? ((teacher?.assigned_classes || []) as string[]) : null;
+  const classes = assigned ? (allClasses || []).filter((c) => assigned.includes(c.id)) : allClasses;
+  const classId = sp.class_id && (!assigned || assigned.includes(sp.class_id)) ? sp.class_id : classes?.[0]?.id;
   const { data: students } = await admin.from("students")
     .select("id, roll_no, profiles(full_name)").eq("class_id", classId).order("roll_no");
   const { data: marked } = await admin.from("attendance").select("*").eq("date", date);
   const markedMap = new Map((marked ?? []).map((m) => [m.student_id, m.status]));
 
+  const summary = await admin.from("attendance").select("status");
+  const totals = (summary.data || []).reduce((out, row) => { out[row.status] = (out[row.status] || 0) + 1; return out; }, {} as Record<string, number>);
+  const total = Object.values(totals).reduce((a, b) => a + b, 0);
   return (
     <>
       <PageHeader title="Attendance" subtitle="Mark daily class attendance." />
+      {profile.role === "super_admin" && <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[["Present", totals.present || 0, "text-emerald-600"], ["Absent", totals.absent || 0, "text-red-600"], ["Late", totals.late || 0, "text-amber-600"], ["Attendance Rate", total ? `${Math.round(((totals.present || 0) / total) * 100)}%` : "0%", "text-primary-600"]].map(([label, value, color]) => <div key={String(label)} className="card"><div className="text-xs text-slate-500">{label}</div><div className={`mt-1 text-2xl font-bold ${color}`}>{value}</div></div>)}
+      </div>}
       <form method="GET" className="card mb-6 flex flex-wrap items-end gap-4">
         <label className="block"><span className="label">Class</span>
           <select name="class_id" className="input" defaultValue={classId} onChange={undefined}>
@@ -46,6 +63,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
       <form action={markAttendance} className="card">
         <input type="hidden" name="date" value={date} />
+        <input type="hidden" name="class_id" value={classId} />
         <table className="table">
           <thead><tr><th>Roll</th><th>Student</th><th>Status</th></tr></thead>
           <tbody>

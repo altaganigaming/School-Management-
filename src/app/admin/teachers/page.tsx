@@ -12,6 +12,7 @@ export default async function TeachersPage() {
     .select("*, profiles(full_name, username, phone, is_active), subjects(name)")
     .order("employee_id");
   const { data: subjects } = await admin.from("subjects").select("*").order("name");
+  const { data: classes } = await admin.from("classes").select("id, name, section").order("name");
 
   return (
     <>
@@ -25,12 +26,12 @@ export default async function TeachersPage() {
             {(teachers || []).map((t) => (
               <tr key={t.id}>
                 <td className="font-mono text-xs">{t.employee_id}</td>
-                <td className="font-medium">{t.profiles?.full_name}</td>
+                <td className="font-medium">{t.profiles?.[0]?.full_name}</td>
                 <td><Badge color="blue">{t.subjects?.name || "—"}</Badge></td>
                 <td className="text-xs">{t.qualification}</td>
                 <td className="text-xs">{t.joining_date || "—"}</td>
                 <td className="text-xs">{t.profiles?.phone || "—"}</td>
-                <td><Badge color={t.profiles?.is_active ? "green" : "red"}>{t.profiles?.is_active ? "Active" : "Inactive"}</Badge></td>
+                <td><Badge color={t.profiles?.[0]?.is_active ? "green" : "red"}>{t.profiles?.[0]?.is_active ? "Active" : "Inactive"}</Badge></td>
               </tr>
             ))}
           </tbody>
@@ -43,7 +44,7 @@ export default async function TeachersPage() {
           <input type="hidden" name="role" value="teacher" />
           <label className="block"><span className="label">Teacher</span>
             <select name="user_id" className="input" required>
-              {(teachers || []).map((t) => <option key={t.profile_id} value={t.profile_id}>{t.employee_id} — {t.profiles?.full_name}</option>)}
+              {(teachers || []).map((t) => <option key={t.profile_id} value={t.profile_id}>{t.employee_id} — {t.profiles?.[0]?.full_name}</option>)}
             </select>
           </label>
           <label className="block"><span className="label">Full Name</span><input name="full_name" className="input" /></label>
@@ -55,6 +56,12 @@ export default async function TeachersPage() {
             </select>
           </label>
           <label className="block"><span className="label">Joining Date</span><input name="joining_date" type="date" className="input" /></label>
+          <label className="block sm:col-span-2"><span className="label">Assigned Classes</span>
+            <select name="assigned_classes" className="input" multiple size={4}>
+              {(classes || []).map((c) => <option key={c.id} value={c.id}>{c.name} - {c.section}</option>)}
+            </select>
+            <span className="text-xs text-slate-400">Ctrl/Cmd se multiple classes select kar sakte hain.</span>
+          </label>
           <div className="flex items-end"><button className="btn-primary w-full">Save Changes</button></div>
         </form>
       </div>

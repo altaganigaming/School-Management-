@@ -87,6 +87,9 @@ export async function updateProfileRecord(formData: FormData) {
         payload[key] = v === "" ? null : key === "roll_no" || key === "monthly_fee" ? Number(v) : v;
       }
     }
+    if (role === "teacher" && formData.has("assigned_classes")) {
+      payload.assigned_classes = formData.getAll("assigned_classes").map(String);
+    }
     await admin.from(table).update(payload).eq("profile_id", userId);
   }
   revalidatePath("/admin/users");

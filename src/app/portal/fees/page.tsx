@@ -48,8 +48,6 @@ export default async function PortalFeesPage({ searchParams }: { searchParams: P
             <select name="method" className="input"><option value="cash">Cash (at office)</option><option value="bank">Bank Transfer</option><option value="upi">UPI</option><option value="cheque">Cheque</option></select></label>
           <label className="block"><span className="label">Transaction / Reference No.</span>
             <input name="reference_no" className="input" placeholder="e.g. UTR number" /></label>
-          <label className="block"><span className="label">Screenshot / Proof</span>
-            <input name="proof" type="file" accept="image/*" className="input" /></label>
           <label className="block"><span className="label">Note (optional)</span>
             <input name="note" className="input" /></label>
         </div>

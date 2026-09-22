@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
-import { updateAdmissionStatus } from "@/lib/actions/content";
+import { deleteAdmission, updateAdmissionStatus } from "@/lib/actions/content";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,8 @@ export default async function AdmissionsPage() {
               <p><b>Received:</b> {new Date(application.created_at).toLocaleString()}</p>
             </div>
             {application.message && <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{application.message}</p>}
-            <form action={updateAdmissionStatus} className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+            <form action={updateAdmissionStatus} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="id" value={application.id} />
               <label className="text-sm text-slate-500" htmlFor={`status-${application.id}`}>Update status</label>
               <select id={`status-${application.id}`} name="status" defaultValue={application.status} className="input w-auto">
@@ -38,6 +39,8 @@ export default async function AdmissionsPage() {
               </select>
               <button className="btn-primary btn-sm">Save</button>
             </form>
+            <form action={deleteAdmission}><input type="hidden" name="id" value={application.id} /><button className="btn-danger btn-sm">Delete permanently</button></form>
+            </div>
           </article>
         ))}
         {!applications?.length && <EmptyState message="No online admission applications yet." />}

@@ -8,6 +8,7 @@ export interface Profile {
   full_name: string;
   role: Role;
   permissions: string[];
+  assigned_classes?: string[];
   avatar_url: string | null;
   phone: string | null;
   is_active: boolean;
