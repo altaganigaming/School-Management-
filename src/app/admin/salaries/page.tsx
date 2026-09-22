@@ -19,6 +19,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader title="Salaries" subtitle="Monthly salary records for faculty." />
       {(sp.added || sp.paid) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Saved.</div>}
+      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">{sp.error === "duplicate" ? "This teacher already has a salary record for that month." : "Please check the teacher and amount."}</div>}
 
       <form action={addSalaryRecord} className="card mb-6 grid gap-4 sm:grid-cols-4">
         <h2 className="card-title sm:col-span-4">➕ Add Salary Record</h2>
@@ -40,7 +41,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           <tbody>
             {(records || []).map((r) => (
               <tr key={r.id}>
-                <td className="font-medium">{r.teachers?.profiles?.full_name}<br /><span className="font-mono text-xs text-slate-400">{r.teachers?.employee_id}</span></td>
+                <td className="font-medium">{r.teachers?.profiles?.[0]?.full_name || "Unknown teacher"}<br /><span className="font-mono text-xs text-slate-400">{r.teachers?.employee_id}</span></td>
                 <td>{monthLabel(r.month)}</td>
                 <td>{formatCurrency(r.amount)}</td>
                 <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>

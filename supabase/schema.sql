@@ -240,6 +240,7 @@ create table public.documents (
   id         uuid primary key default gen_random_uuid(),
   title      text not null,
   file_url   text not null,
+  category   text not null default 'general',
   audience   text not null default 'public' check (audience in ('public','student','teacher')),
   created_by uuid references public.profiles(id),
   created_at timestamptz not null default now()

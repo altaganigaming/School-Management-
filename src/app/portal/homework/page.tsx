@@ -18,7 +18,7 @@ export default async function HomeworkPage() {
           <div className="flex flex-wrap items-center gap-2"><b>{h.title}</b>
             {h.subjects && <Badge color="purple">{h.subjects.name}</Badge>}
             {h.due_date && <Badge color="amber">Due {h.due_date}</Badge>}</div>
-          <p className="mt-1 text-sm text-slate-500">{h.description}</p>
+          {h.description && <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-600"><b className="text-slate-800">Teacher note:</b> {h.description}</div>}
           {h.attachment_url && <a href={h.attachment_url} target="_blank" className="text-sm text-primary-600 underline">Attachment ⭳</a>}
         </div>))}
       {!items?.length && <EmptyState message="No homework assigned." />}

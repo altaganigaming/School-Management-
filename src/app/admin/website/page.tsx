@@ -53,6 +53,12 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
               </label>
             ))}
           </div>
+          <label className="mt-6 flex items-center gap-3 rounded-lg bg-primary-50 p-4 text-sm text-primary-900">
+            <input type="hidden" name="key" value="admission_enabled" />
+            <input type="hidden" name="value:admission_enabled" value="false" />
+            <input type="checkbox" name="value:admission_enabled" value="true" defaultChecked={s.admission_enabled !== false} className="h-5 w-5" />
+            <span><b>Online admissions enabled</b><br /><span className="text-xs text-primary-700">Show the application form on the home page.</span></span>
+          </label>
         </div>
 
         <div className="card">

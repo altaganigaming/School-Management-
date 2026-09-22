@@ -24,16 +24,21 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
             <option value="student">Students only</option>
             <option value="teacher">Teachers/Staff only</option>
           </select></label>
+        <label className="block"><span className="label">Category</span>
+          <select name="category" className="input">
+            <option value="general">General</option><option value="prospectus">Prospectus</option><option value="syllabus">Syllabus</option><option value="forms">Forms</option><option value="notices">Notices</option><option value="results">Results</option>
+          </select></label>
         <label className="block"><span className="label">File</span><input name="file" type="file" className="input" required /></label>
         <div className="flex items-end"><button className="btn-primary w-full">Upload</button></div>
       </form>
       <div className="card overflow-x-auto">
         <table className="table">
-          <thead><tr><th>Title</th><th>Audience</th><th>File</th><th className="text-right">Action</th></tr></thead>
+          <thead><tr><th>Title</th><th>Category</th><th>Audience</th><th>File</th><th className="text-right">Action</th></tr></thead>
           <tbody>
             {(items || []).map((d: any) => (
               <tr key={d.id}>
                 <td className="font-medium">{d.title}</td>
+                <td><Badge color="blue">{d.category || "general"}</Badge></td>
                 <td><Badge color={d.audience === "public" ? "green" : d.audience === "student" ? "blue" : "purple"}>{d.audience}</Badge></td>
                 <td><a href={d.file_url} target="_blank" className="text-sm text-primary-600 underline">View ⭳</a></td>
                 <td className="text-right">

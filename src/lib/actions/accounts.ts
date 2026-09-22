@@ -144,7 +144,9 @@ export async function saveSettings(formData: FormData) {
   const supabase = await createClient();
   const keys = formData.getAll("key").map(String);
   for (const key of keys) {
-    const raw = String(formData.get(`value:${key}`) || "");
+    const raw = key === "admission_enabled"
+      ? (formData.getAll(`value:${key}`).includes("true") ? "true" : "false")
+      : String(formData.get(`value:${key}`) || "");
     const media = formData.get(`file:${key}`) as File | null;
     if (media && media.size > 0) {
       const admin = createAdminClient();

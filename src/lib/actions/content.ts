@@ -33,6 +33,13 @@ export async function submitAdmission(formData: FormData) {
   redirect("/?admission=sent#admissions");
 }
 
+export async function updateAdmissionStatus(formData: FormData) {
+  await requireAdmin("manage_admissions");
+  const supabase = await createClient();
+  await supabase.from("admission_inquiries").update({ status: String(formData.get("status")) }).eq("id", String(formData.get("id")));
+  revalidatePath("/admin/admissions");
+}
+
 export async function addContent(table: Table, formData: FormData) {
   await requireAdmin(PERM[table]);
   const supabase = await createClient();
@@ -46,7 +53,7 @@ export async function addContent(table: Table, formData: FormData) {
   if (table === "notices") Object.assign(payload, { body: f("body"), category: f("category") || "notice" });
   if (table === "events") Object.assign(payload, { description: f("body"), event_date: f("event_date") });
   if (table === "achievements") Object.assign(payload, { description: f("body"), achieved_on: f("event_date") });
-  if (table === "documents") Object.assign(payload, { audience: f("audience") || "public" });
+  if (table === "documents") Object.assign(payload, { audience: f("audience") || "public", category: f("category") || "general" });
 
   // optional image/file upload
   const file = formData.get("file") as File | null;

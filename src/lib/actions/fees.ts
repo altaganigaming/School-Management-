@@ -107,12 +107,17 @@ async function nextReceiptNo(admin: any): Promise<string> {
 export async function addSalaryRecord(formData: FormData) {
   await requireAdmin("manage_salaries");
   const admin = createAdminClient();
-  await admin.from("salary_records").upsert({
-    teacher_id: String(formData.get("teacher_id")),
-    month: String(formData.get("month")),
-    amount: Number(formData.get("amount")),
+  const teacherId = String(formData.get("teacher_id") || "");
+  const month = String(formData.get("month") || "");
+  const amount = Number(formData.get("amount") || 0);
+  if (!teacherId || !month || !amount || amount < 0) redirect("/admin/salaries?error=invalid");
+  const { error } = await admin.from("salary_records").upsert({
+    teacher_id: teacherId,
+    month,
+    amount,
     status: "pending",
-  }, { onConflict: "teacher_id,month", ignoreDuplicates: true });
+  }, { onConflict: "teacher_id,month" });
+  if (error) redirect(`/admin/salaries?error=${error.code === "23505" ? "duplicate" : "invalid"}`);
   revalidatePath("/admin/salaries");
   redirect("/admin/salaries?added=1");
 }

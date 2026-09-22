@@ -56,7 +56,7 @@ export default async function HomeworkPage() {
         <label className="block"><span className="label">Title</span><input name="title" className="input" required /></label>
         <label className="block"><span className="label">Due Date</span><input name="due_date" type="date" className="input" /></label>
         <div className="flex items-end"><button className="btn-primary w-full">Assign</button></div>
-        <label className="block sm:col-span-2 lg:col-span-5"><span className="label">Description</span>
+        <label className="block sm:col-span-2 lg:col-span-5"><span className="label">Teacher note / instructions</span>
           <textarea name="description" className="input" rows={2} /></label>
         <input type="hidden" name="created_by" value={me?.id} />
       </form>
