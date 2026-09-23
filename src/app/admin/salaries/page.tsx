@@ -14,6 +14,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
     .select("id, employee_id, profiles(full_name)").order("employee_id");
   const { data: records } = await admin.from("salary_records")
     .select("*, teachers(employee_id, profiles(full_name))").order("month", { ascending: false });
+  const teacherName = (teacher: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
+    Array.isArray(teacher.profiles) ? teacher.profiles[0]?.full_name || "Unnamed teacher" : teacher.profiles?.full_name || "Unnamed teacher";
 
   return (
     <>
@@ -25,7 +27,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         <h2 className="card-title sm:col-span-4">➕ Add Salary Record</h2>
         <label className="block"><span className="label">Teacher</span>
           <select name="teacher_id" className="input" required>
-            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {t.profiles?.full_name || "Unnamed teacher"}</option>)}
+            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {teacherName(t)}</option>)}
           </select>
         </label>
         <label className="block"><span className="label">Month</span>

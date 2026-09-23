@@ -45,6 +45,8 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
   const classId = sp.class_id || classes?.[0]?.id;
   const mySlots = (slots || []).filter((t) => t.class_id === classId);
   const maxPeriod = Math.max(6, ...mySlots.map((t) => t.period_no));
+  const teacherName = (teacher: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
+    Array.isArray(teacher.profiles) ? teacher.profiles[0]?.full_name || "Unnamed teacher" : teacher.profiles?.full_name || "Unnamed teacher";
 
   return (
     <>
@@ -67,7 +69,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
             {(subjects || []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
         <label className="block"><span className="label">Teacher</span>
           <select name="teacher_id" className="input"><option value="">—</option>
-            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.profiles?.full_name || "Unnamed teacher"}</option>)}</select></label>
+            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{teacherName(t)}</option>)}</select></label>
         <label className="block"><span className="label">Start</span><input name="start_time" type="time" className="input" /></label>
         <label className="block"><span className="label">End</span><input name="end_time" type="time" className="input" /></label>
         <div className="flex items-end"><button className="btn-primary w-full">Set Slot</button></div>
