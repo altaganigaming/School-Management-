@@ -10,10 +10,16 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   await requireAdmin("manage_fees");
   const sp = await searchParams;
   const admin = createAdminClient();
-  const { data: students } = await admin.from("students")
-    .select("id, admission_no, monthly_fee, profiles(full_name), classes(name, section)")
-    .order("admission_no");
-  const { data: records } = await admin.from("fee_records").select("*").order("month");
+  const [{ data: students }, { data: records }, { data: profiles }, { data: classes }] = await Promise.all([
+    admin.from("students").select("id, admission_no, monthly_fee, profile_id, class_id").order("admission_no"),
+    admin.from("fee_records").select("*").order("month"),
+    admin.from("profiles").select("id, full_name"),
+    admin.from("classes").select("id, name, section"),
+  ]);
+  const profileNames = new Map((profiles || []).map((profile) => [profile.id, profile.full_name]));
+  const classLabels = new Map((classes || []).map((item) => [item.id, `${item.name}-${item.section}`]));
+  const studentName = (student: { profile_id?: string | null; admission_no?: string | null }) =>
+    profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student";
   const byStudent = new Map<string, any[]>();
   for (const r of records ?? []) {
     if (!byStudent.has(r.student_id)) byStudent.set(r.student_id, []);
@@ -36,7 +42,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.[0]?.full_name}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {studentName(s)}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Month</span>
@@ -53,7 +59,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.[0]?.full_name}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {studentName(s)}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Starting Month</span>
@@ -72,7 +78,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.[0]?.full_name}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {studentName(s)}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Month</span>
@@ -96,7 +102,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
               <tbody>
                 {(records || []).map((r) => (
                   <tr key={r.id}>
-                    <td className="text-xs">{students?.find((s) => s.id === r.student_id)?.profiles?.[0]?.full_name ?? r.student_id.slice(0, 6)}</td>
+                    <td className="text-xs">{studentName(students?.find((s) => s.id === r.student_id) || { admission_no: r.student_id.slice(0, 6) })}</td>
                     <td className="text-xs">{monthLabel(r.month)}</td>
                     <td className="text-xs">{formatCurrency(r.amount)}</td>
                     <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>
@@ -122,8 +128,8 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
               return (
                 <tr key={s.id}>
                   <td className="font-mono text-xs">{s.admission_no}</td>
-                  <td className="font-medium">{s.profiles?.[0]?.full_name}</td>
-                  <td className="text-xs">{s.classes?.[0] ? `${s.classes[0].name}-${s.classes[0].section}` : "—"}</td>
+                  <td className="font-medium">{studentName(s)}</td>
+                  <td className="text-xs">{classLabels.get(s.class_id) || "—"}</td>
                   <td>{formatCurrency(s.monthly_fee)}</td>
                   <td className="text-emerald-600">{formatCurrency(paid)}</td>
                   <td className={pending > 0 ? "text-amber-600 font-semibold" : "text-slate-400"}>{formatCurrency(pending)}</td>

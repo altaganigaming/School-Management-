@@ -40,7 +40,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
                 <td className="font-medium">{d.title}</td>
                 <td><Badge color="blue">{d.category || "general"}</Badge></td>
                 <td><Badge color={d.audience === "public" ? "green" : d.audience === "student" ? "blue" : "purple"}>{d.audience}</Badge></td>
-                <td><a href={d.file_url} target="_blank" className="text-sm text-primary-600 underline">View ⭳</a></td>
+                <td><a href={d.file_url} download={d.title} target="_blank" className="text-sm text-primary-600 underline">Download ⭳</a></td>
                 <td className="text-right">
                   <form action={deleteContent.bind(null, "documents")}><input type="hidden" name="id" value={d.id} />
                     <button className="btn-danger btn-sm">Delete</button></form>

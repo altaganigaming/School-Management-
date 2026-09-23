@@ -18,7 +18,7 @@ export default async function DownloadsPage() {
             <section key={category}>
               <h2 className="mb-3 mt-8 text-lg font-bold capitalize text-slate-800">{category}</h2>
               {(docs || []).filter((d) => (d.category || "general") === category).map((d) => (
-            <a key={d.id} href={d.file_url} target="_blank" rel="noreferrer"
+            <a key={d.id} href={d.file_url} download={d.title} target="_blank" rel="noreferrer"
               className="card flex items-center justify-between hover:border-primary-300 hover:shadow-md transition">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📄</span>

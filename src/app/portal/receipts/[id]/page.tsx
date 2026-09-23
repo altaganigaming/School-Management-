@@ -40,7 +40,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           <div className="mt-8 border-t border-slate-300 pt-1">Authorized Signature</div>
         </div>
       </div>
-      <button className="btn-primary mt-4 w-full" onClick={undefined}>Use browser Print (Ctrl+P) to save as PDF</button>
+      <a href="#receipt" download={`receipt-${r.receipt_no}.html`} className="btn-primary mt-4 block w-full text-center">Download Receipt</a>
     </div>
   );
 }

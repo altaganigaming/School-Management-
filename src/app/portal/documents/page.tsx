@@ -12,7 +12,7 @@ export default async function DocumentsPage() {
     <PageHeader title="Documents" subtitle="Official documents shared with students." />
     <div className="space-y-3">
       {(items || []).map((d) => (
-        <a key={d.id} href={d.file_url} target="_blank" className="card flex items-center justify-between hover:shadow-md transition">
+        <a key={d.id} href={d.file_url} download={d.title} target="_blank" className="card flex items-center justify-between hover:shadow-md transition">
           <div className="flex items-center gap-3"><span className="text-2xl">📄</span>
             <div><div className="font-medium">{d.title}</div>
               <Badge color={d.audience === "student" ? "blue" : "green"}>{d.audience}</Badge></div></div>

@@ -11,11 +11,14 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const admin = createAdminClient();
   const { data: teachers } = await admin.from("teachers")
-    .select("id, employee_id, profiles(full_name)").order("employee_id");
+    .select("id, profile_id, employee_id").order("employee_id");
+  const profileIds = (teachers || []).map((teacher) => teacher.profile_id).filter(Boolean);
+  const { data: teacherProfiles } = profileIds.length
+    ? await admin.from("profiles").select("id, full_name").in("id", profileIds)
+    : { data: [] };
+  const profileNames = new Map((teacherProfiles || []).map((profile) => [profile.id, profile.full_name]));
   const { data: records } = await admin.from("salary_records")
-    .select("*, teachers(employee_id, profiles(full_name))").order("month", { ascending: false });
-  const teacherName = (teacher: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
-    Array.isArray(teacher.profiles) ? teacher.profiles[0]?.full_name || "Unnamed teacher" : teacher.profiles?.full_name || "Unnamed teacher";
+    .select("*, teachers(employee_id, profile_id)").order("month", { ascending: false });
 
   return (
     <>
@@ -27,7 +30,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         <h2 className="card-title sm:col-span-4">➕ Add Salary Record</h2>
         <label className="block"><span className="label">Teacher</span>
           <select name="teacher_id" className="input" required>
-            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {teacherName(t)}</option>)}
+            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {profileNames.get(t.profile_id) || "Unnamed teacher"}</option>)}
           </select>
         </label>
         <label className="block"><span className="label">Month</span>
@@ -43,7 +46,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           <tbody>
             {(records || []).map((r) => (
               <tr key={r.id}>
-                <td className="font-medium">{r.teachers?.profiles?.full_name || "Unknown teacher"}<br /><span className="font-mono text-xs text-slate-400">{r.teachers?.employee_id}</span></td>
+                <td className="font-medium">{profileNames.get(r.teachers?.profile_id) || "Unknown teacher"}<br /><span className="font-mono text-xs text-slate-400">{r.teachers?.employee_id}</span></td>
                 <td>{monthLabel(r.month)}</td>
                 <td>{formatCurrency(r.amount)}</td>
                 <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>
