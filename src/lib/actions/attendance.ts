@@ -14,7 +14,7 @@ export async function saveAttendance(formData: FormData) {
   if (!classId || !date) return;
 
   const { data: teacher } = await admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single();
-  if (!((teacher?.assigned_classes || []) as string[]).includes(classId)) return;
+  if (!((teacher?.assigned_classes || []) as unknown[]).map(String).includes(classId)) return;
 
   const { data: students } = await admin.from("students").select("id").eq("class_id", classId);
   const validStudentIds = new Set((students || []).map((student) => student.id));

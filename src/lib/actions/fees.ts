@@ -32,6 +32,27 @@ export async function generateFeeMonths(formData: FormData) {
   redirect("/admin/fees?generated=1");
 }
 
+/** Create or reset one student's selected month as pending. */
+export async function markFeePending(formData: FormData) {
+  await requireAdmin("manage_fees");
+  const admin = createAdminClient();
+  const studentId = String(formData.get("student_id") || "");
+  const month = String(formData.get("month") || "");
+  const { data: student } = await admin.from("students").select("monthly_fee").eq("id", studentId).single();
+  if (!studentId || !month || !student) redirect("/admin/fees?error=1");
+  await admin.from("fee_records").upsert({
+    student_id: studentId,
+    month,
+    amount: student.monthly_fee,
+    status: "pending",
+    paid_at: null,
+  }, { onConflict: "student_id,month" });
+  revalidatePath("/admin/fees");
+  revalidatePath("/portal/fees");
+  revalidatePath("/portal");
+  redirect("/admin/fees?pending=1");
+}
+
 /** Mark a fee month as paid directly (cash payment at office). */
 export async function recordManualPayment(formData: FormData) {
   const me = await requireAdmin("verify_payments");

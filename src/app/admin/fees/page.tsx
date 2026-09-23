@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel, monthOptions } from "@/lib/utils";
-import { generateFeeMonths, recordManualPayment } from "@/lib/actions/fees";
+import { generateFeeMonths, markFeePending, recordManualPayment } from "@/lib/actions/fees";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +23,29 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader title="Fee Ledger" subtitle="Monthly fee records for every student." />
-      {(sp.generated || sp.paid) && (
+      {(sp.generated || sp.paid || sp.pending) && (
         <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">
-          {sp.generated ? "Fee months generated." : `Payment recorded${sp.receipt ? ` — Receipt ${sp.receipt}` : ""}.`}
+          {sp.generated ? "Fee months generated." : sp.pending ? "Fee marked as pending." : `Payment recorded${sp.receipt ? ` — Receipt ${sp.receipt}` : ""}.`}
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
+        <form action={markFeePending} className="card h-fit">
+          <h2 className="card-title">⏳ Mark Fee Pending</h2>
+          <p className="mt-1 text-xs text-slate-400">Select a student and month to show the pending fee in their account.</p>
+          <div className="mt-4 space-y-3">
+            <label className="block"><span className="label">Student</span>
+              <select name="student_id" className="input" required>
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {s.profiles?.[0]?.full_name}</option>)}
+              </select>
+            </label>
+            <label className="block"><span className="label">Month</span>
+              <select name="month" className="input" required>{monthOptions().map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select>
+            </label>
+            <button className="btn-primary w-full">Mark Pending</button>
+          </div>
+        </form>
+
         {/* GENERATE MONTHS */}
         <form action={generateFeeMonths} className="card h-fit">
           <h2 className="card-title">⚙️ Generate Fee Months</h2>

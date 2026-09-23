@@ -10,15 +10,15 @@ async function addHomework(formData: FormData) {
   const profile = await require("manage_homework");
   const { createClient: cc } = await import("@/lib/supabase/server");
   const supabase = await cc();
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
   const classId = String(formData.get("class_id"));
   if (profile.role === "teacher") {
-    const { createAdminClient } = await import("@/lib/supabase/admin");
-    const admin = createAdminClient();
     const { data: teacher } = await admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single();
-    if (!((teacher?.assigned_classes || []) as string[]).includes(classId)) return;
+    if (!((teacher?.assigned_classes || []) as unknown[]).map(String).includes(classId)) return;
   }
   const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from("homework").insert({
+  const { error } = await admin.from("homework").insert({
     class_id: classId,
     subject_id: String(formData.get("subject_id")) || null,
     title: String(formData.get("title")),
@@ -26,8 +26,11 @@ async function addHomework(formData: FormData) {
     due_date: String(formData.get("due_date")) || null,
     created_by: user?.id,
   });
+  if (error) return;
   const { revalidatePath } = await import("next/cache");
   revalidatePath("/admin/homework");
+  revalidatePath("/portal/homework");
+  revalidatePath("/portal");
 }
 
 async function deleteHomework(formData: FormData) {
@@ -50,7 +53,7 @@ export default async function HomeworkPage() {
     me?.role === "teacher" ? supabase.from("teachers").select("assigned_classes").eq("profile_id", me.id).single() : Promise.resolve({ data: null }),
   ]);
   const visibleClasses = me?.role === "teacher"
-    ? classes?.filter((c) => ((teacher?.assigned_classes || []) as string[]).includes(c.id))
+    ? classes?.filter((c) => ((teacher?.assigned_classes || []) as unknown[]).map(String).includes(c.id))
     : classes;
 
   return (

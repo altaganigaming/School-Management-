@@ -17,7 +17,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     admin.from("classes").select("id, name, section").order("name").order("section"),
     profile.role === "teacher" ? admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single() : Promise.resolve({ data: null }),
   ]);
-  const assigned = profile.role === "teacher" ? ((teacher?.assigned_classes || []) as string[]) : null;
+  const assigned = profile.role === "teacher" ? ((teacher?.assigned_classes || []) as unknown[]).map(String) : null;
   const classes = assigned ? (allClasses || []).filter((item) => assigned.includes(item.id)) : allClasses || [];
   const classId = sp.class_id && (!assigned || assigned.includes(sp.class_id)) ? sp.class_id : classes[0]?.id || "";
   const [{ data: students }, { data: marked }] = await Promise.all([

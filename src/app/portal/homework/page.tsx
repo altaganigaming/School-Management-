@@ -8,8 +8,9 @@ export default async function HomeworkPage() {
   const profile = await requireStudent();
   const supabase = await createClient();
   const { data: student } = await supabase.from("students").select("class_id").eq("profile_id", profile.id).single();
-  const { data: items } = await supabase.from("homework")
-    .select("*, subjects(name)").eq("class_id", student?.class_id).order("due_date", { ascending: false });
+  const { data: items } = student?.class_id
+    ? await supabase.from("homework").select("*, subjects(name)").eq("class_id", student.class_id).order("due_date", { ascending: false })
+    : { data: [] };
   return (<>
     <PageHeader title="Homework" subtitle="Assignments for your class." />
     <div className="space-y-3">

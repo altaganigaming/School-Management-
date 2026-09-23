@@ -67,9 +67,15 @@ export async function addContent(table: Table, formData: FormData) {
   const bucket = table === "gallery" ? "gallery" : "documents";
   if (file && file.size > 0) {
     const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
-    const storage = createAdminClient().storage.from(bucket);
-    const { error } = await storage.upload(path, file, { contentType: file.type || undefined });
-    if (error) redirect(`/admin/${table}?error=upload`);
+    const storageApi = createAdminClient().storage;
+    let storage = storageApi.from(bucket);
+    let { error } = await storage.upload(path, file, { contentType: file.type || undefined });
+    if (error?.message.toLowerCase().includes("not found") && table === "gallery") {
+      await storageApi.createBucket("gallery", { public: true });
+      storage = storageApi.from(bucket);
+      ({ error } = await storage.upload(path, file, { contentType: file.type || undefined }));
+    }
+    if (error) redirect(`/admin/${table}?error=${encodeURIComponent(error.message.slice(0, 80))}`);
     const url = storage.getPublicUrl(path).data.publicUrl;
     if (table === "gallery") payload.image_url = url; else payload.file_url = url;
   }

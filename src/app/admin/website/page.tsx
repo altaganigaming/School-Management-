@@ -5,7 +5,7 @@ import { saveSettings } from "@/lib/actions/accounts";
 export const dynamic = "force-dynamic";
 
 const TEXT_FIELDS = [
-  ["school_name", "School Name"], ["tagline", "Tagline"],
+  ["school_name", "School Name / Homepage H1"], ["tagline", "Tagline"],
   ["about", "About Text"],
   ["vision", "Vision"], ["mission", "Mission"], ["principal_message", "Principal's Message (HTML allowed)"],
   ["admission_info", "Admission Information"],
