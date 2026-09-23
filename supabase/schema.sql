@@ -449,16 +449,14 @@ create policy "attendance admin read"
   );
 create policy "attendance admin write"
   on public.attendance for all using (
-    is_super_admin()
-    or exists (
+    exists (
       select 1 from public.students s
       join public.teachers t on t.profile_id = auth.uid()
       where s.id = attendance.student_id
         and t.assigned_classes @> jsonb_build_array(s.class_id::text)
     )
   ) with check (
-    is_super_admin()
-    or exists (
+    exists (
       select 1 from public.students s
       join public.teachers t on t.profile_id = auth.uid()
       where s.id = attendance.student_id

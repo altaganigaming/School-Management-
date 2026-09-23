@@ -54,7 +54,7 @@ export default function AttendanceRoster({
         })}
       </div>
       {!filtered.length && <p className="py-8 text-center text-sm text-slate-400">No matching students.</p>}
-      {canEdit ? <button className="btn-primary mt-5">Save Attendance</button> : <p className="mt-5 text-sm text-slate-500">Read-only view. Only Principal/Admin can modify attendance.</p>}
+      {canEdit ? <button className="btn-primary mt-5">Save Attendance</button> : <p className="mt-5 text-sm text-slate-500">Read-only monitoring view.</p>}
     </form>
   );
 }
