@@ -155,6 +155,8 @@ create table public.attendance (
   unique (student_id, date)
 );
 
+create index attendance_date_idx on public.attendance (date);
+
 -- ---------- LEAVE ----------
 create table public.leave_requests (
   id          uuid primary key default gen_random_uuid(),
@@ -437,7 +439,7 @@ create policy "salary admin write"
 create policy "attendance admin read"
   on public.attendance for select using (has_permission('manage_attendance') or student_id = my_student_id());
 create policy "attendance admin write"
-  on public.attendance for all using (has_permission('manage_attendance')) with check (has_permission('manage_attendance'));
+  on public.attendance for all using (is_super_admin()) with check (is_super_admin());
 
 -- ---------- leave ----------
 create policy "leave own insert"

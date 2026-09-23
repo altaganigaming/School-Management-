@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getSettings } from "@/lib/auth";
+import { getSettings, getProfile } from "@/lib/auth";
 
 export default async function SiteHeader() {
   const settings = await getSettings();
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const profile = await getProfile();
   const name = settings.school_name || "School";
   const logo = settings.logo_url;
 
@@ -38,8 +36,8 @@ export default async function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          {user ? (
-            <Link href={user ? "/admin" : "/login"} className="btn-primary btn-sm">Dashboard</Link>
+          {profile ? (
+            <Link href={profile.role === "student" ? "/portal" : "/admin"} className="btn-primary btn-sm">Dashboard</Link>
           ) : (
             <Link href="/login" className="btn-primary btn-sm">Login</Link>
           )}

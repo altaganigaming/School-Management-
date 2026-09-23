@@ -38,8 +38,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <h1 className="mx-auto max-w-3xl font-display text-3xl font-bold leading-tight sm:text-6xl">{s.school_name}</h1>
           <p className="mt-3 text-base text-primary-100 sm:mt-4 sm:text-lg">{s.tagline}</p>
           <div className="mx-auto mt-7 grid w-full max-w-sm gap-3 sm:mt-8 sm:flex sm:max-w-none sm:justify-center">
-            <Link href="#admissions" className="btn bg-white px-6 py-3 text-primary-700 hover:bg-primary-50">Apply for Admission</Link>
-            <Link href="/login" className="btn border border-white/40 px-6 py-3 text-white hover:bg-white/10">Portal Login</Link>
+            <Link href="#admission-form" className="btn bg-white px-6 py-3 text-primary-700 hover:bg-primary-50">Apply for Admission</Link>
           </div>
         </div>
       </section>
