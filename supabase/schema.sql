@@ -437,9 +437,34 @@ create policy "salary admin write"
 
 -- ---------- attendance ----------
 create policy "attendance admin read"
-  on public.attendance for select using (has_permission('manage_attendance') or student_id = my_student_id());
+  on public.attendance for select using (
+    has_permission('manage_attendance')
+    or student_id = my_student_id()
+    or exists (
+      select 1 from public.students s
+      join public.teachers t on t.profile_id = auth.uid()
+      where s.id = attendance.student_id
+        and t.assigned_classes @> jsonb_build_array(s.class_id::text)
+    )
+  );
 create policy "attendance admin write"
-  on public.attendance for all using (is_super_admin()) with check (is_super_admin());
+  on public.attendance for all using (
+    is_super_admin()
+    or exists (
+      select 1 from public.students s
+      join public.teachers t on t.profile_id = auth.uid()
+      where s.id = attendance.student_id
+        and t.assigned_classes @> jsonb_build_array(s.class_id::text)
+    )
+  ) with check (
+    is_super_admin()
+    or exists (
+      select 1 from public.students s
+      join public.teachers t on t.profile_id = auth.uid()
+      where s.id = attendance.student_id
+        and t.assigned_classes @> jsonb_build_array(s.class_id::text)
+    )
+  );
 
 -- ---------- leave ----------
 create policy "leave own insert"

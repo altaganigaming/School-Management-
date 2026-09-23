@@ -67,13 +67,17 @@ export async function addContent(table: Table, formData: FormData) {
   const bucket = table === "gallery" ? "gallery" : "documents";
   if (file && file.size > 0) {
     const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
-    await supabase.storage.from(bucket).upload(path, file);
-    const url = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    const storage = createAdminClient().storage.from(bucket);
+    const { error } = await storage.upload(path, file, { contentType: file.type || undefined });
+    if (error) redirect(`/admin/${table}?error=upload`);
+    const url = storage.getPublicUrl(path).data.publicUrl;
     if (table === "gallery") payload.image_url = url; else payload.file_url = url;
   }
   if (table === "gallery" && !payload.image_url) payload.image_url = f("image_url");
 
-  await supabase.from(table).insert(payload);
+  const { error } = await supabase.from(table).insert(payload);
+  if (error) redirect(`/admin/${table}?error=save`);
+  if (table === "gallery") revalidatePath("/");
   revalidatePath(`/admin/${table === "achievements" ? "achievements" : table}`);
   redirect(`/admin/${table}?added=1`);
 }

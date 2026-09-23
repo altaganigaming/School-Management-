@@ -25,7 +25,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         <h2 className="card-title sm:col-span-4">➕ Add Salary Record</h2>
         <label className="block"><span className="label">Teacher</span>
           <select name="teacher_id" className="input" required>
-            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {t.profiles?.[0]?.full_name}</option>)}
+            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {t.profiles?.full_name || "Unnamed teacher"}</option>)}
           </select>
         </label>
         <label className="block"><span className="label">Month</span>
@@ -41,7 +41,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           <tbody>
             {(records || []).map((r) => (
               <tr key={r.id}>
-                <td className="font-medium">{r.teachers?.profiles?.[0]?.full_name || "Unknown teacher"}<br /><span className="font-mono text-xs text-slate-400">{r.teachers?.employee_id}</span></td>
+                <td className="font-medium">{r.teachers?.profiles?.full_name || "Unknown teacher"}<br /><span className="font-mono text-xs text-slate-400">{r.teachers?.employee_id}</span></td>
                 <td>{monthLabel(r.month)}</td>
                 <td>{formatCurrency(r.amount)}</td>
                 <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>

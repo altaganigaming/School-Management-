@@ -5,13 +5,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 
 export async function saveAttendance(formData: FormData) {
-  const profile = await requireAdmin("manage_attendance");
-  if (profile.role !== "super_admin") return;
+  const profile = await requireAdmin();
 
   const admin = createAdminClient();
   const classId = String(formData.get("class_id") || "");
   const date = String(formData.get("date") || "");
   if (!classId || !date) return;
+
+  if (profile.role === "teacher") {
+    const { data: teacher } = await admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single();
+    if (!((teacher?.assigned_classes || []) as string[]).includes(classId)) return;
+  } else if (profile.role !== "super_admin") {
+    return;
+  }
 
   const { data: students } = await admin.from("students").select("id").eq("class_id", classId);
   const validStudentIds = new Set((students || []).map((student) => student.id));
