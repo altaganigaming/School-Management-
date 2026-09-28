@@ -17,14 +17,30 @@ async function assertCanManage(targetRole: Role, permission: string) {
 }
 
 export async function createAccount(formData: FormData) {
-  const role = String(formData.get("role")) as Role;
+  const roleValue = String(formData.get("role") || "");
+  if (!(["student", "teacher", "staff"] as string[]).includes(roleValue)) redirect("/admin/users?error=missing");
+  const role = roleValue as Role;
   const permission = role === "student" ? "manage_students" : "manage_faculty";
-  const me = await assertCanManage(role, permission);
+  await assertCanManage(role, permission);
 
   const username = String(formData.get("username") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const fullName = String(formData.get("full_name") || "").trim();
-  if (!username || !password || !fullName) redirect("/admin/users?error=missing");
+  const admissionNo = String(formData.get("admission_no") || "").trim();
+  const employeeId = String(formData.get("employee_id") || "").trim();
+  const classId = String(formData.get("class_id") || "");
+  const rollNo = Number(formData.get("roll_no"));
+  const assignedClasses = [...new Set(formData.getAll("assigned_classes").map(String).filter(Boolean))];
+  if (!username || !password || !fullName
+    || (role === "student" && (!admissionNo || !classId || !Number.isInteger(rollNo) || rollNo < 1))
+    || (role === "teacher" && (!employeeId || !assignedClasses.length))) redirect("/admin/users?error=missing");
+
+  const selectedClassIds = role === "student" ? [classId] : role === "teacher" ? assignedClasses : [];
+  if (selectedClassIds.length) {
+    const admin = createAdminClient();
+    const { data: classes } = await admin.from("classes").select("id").in("id", selectedClassIds);
+    if ((classes || []).length !== selectedClassIds.length) redirect("/admin/users?error=save");
+  }
 
   const admin = createAdminClient();
   const { data: created, error } = await admin.auth.admin.createUser({
@@ -36,14 +52,18 @@ export async function createAccount(formData: FormData) {
   if (error || !created.user) redirect("/admin/users?error=exists");
 
   const userId = created.user.id;
-  await admin.from("profiles").update({ role, is_active: true }).eq("id", userId);
+  const { error: profileError } = await admin.from("profiles").update({ role, is_active: true, full_name: fullName }).eq("id", userId);
+  if (profileError) {
+    await admin.auth.admin.deleteUser(userId);
+    redirect("/admin/users?error=save");
+  }
 
   if (role === "student") {
-    await admin.from("students").insert({
+    const { error } = await admin.from("students").insert({
       profile_id: userId,
-      admission_no: String(formData.get("admission_no") || ""),
-      class_id: String(formData.get("class_id") || "") || null,
-      roll_no: Number(formData.get("roll_no") || 0) || null,
+      admission_no: admissionNo,
+      class_id: classId,
+      roll_no: rollNo,
       dob: String(formData.get("dob") || "") || null,
       parent_name: String(formData.get("parent_name") || ""),
       parent_phone: String(formData.get("parent_phone") || ""),
@@ -51,33 +71,52 @@ export async function createAccount(formData: FormData) {
       monthly_fee: Number(formData.get("monthly_fee") || 0),
       admission_date: String(formData.get("admission_date") || new Date().toISOString().slice(0, 10)),
     });
+    if (error) {
+      await admin.auth.admin.deleteUser(userId);
+      redirect(error.code === "23505" ? "/admin/users?error=exists" : "/admin/users?error=save");
+    }
   } else if (role === "teacher") {
-    await admin.from("teachers").insert({
+    const { error } = await admin.from("teachers").insert({
       profile_id: userId,
-      employee_id: String(formData.get("employee_id") || ""),
+      employee_id: employeeId,
       qualification: String(formData.get("qualification") || ""),
       subject_id: String(formData.get("subject_id") || "") || null,
-      joining_date: String(formData.get("joining_date") || "") || null,
+      assigned_classes: assignedClasses,
+      joining_date: String(formData.get("joining_date") || formData.get("admission_date") || "") || null,
       address: String(formData.get("address") || ""),
     });
+    if (error) {
+      await admin.auth.admin.deleteUser(userId);
+      redirect(error.code === "23505" ? "/admin/users?error=exists" : "/admin/users?error=save");
+    }
   }
 
   revalidatePath("/admin/users");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/teachers");
+  revalidatePath("/admin/salaries");
+  revalidatePath("/admin/fees");
   redirect(`/admin/users?created=${username}`);
 }
 
 export async function updateProfileRecord(formData: FormData) {
   const role = String(formData.get("role")) as Role;
+  if (role !== "student" && role !== "teacher") redirect("/admin?denied=1");
   const permission = role === "student" ? "manage_students" : "manage_faculty";
   await assertCanManage(role, permission);
   const admin = createAdminClient();
   const userId = String(formData.get("user_id"));
   const table = role === "student" ? "students" : role === "teacher" ? "teachers" : null;
 
-  await admin.from("profiles").update({
-    full_name: String(formData.get("full_name") || ""),
-    phone: String(formData.get("phone") || ""),
-  }).eq("id", userId);
+  const profileChanges: Record<string, string> = {};
+  const fullName = String(formData.get("full_name") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  if (fullName) profileChanges.full_name = fullName;
+  if (phone) profileChanges.phone = phone;
+  if (Object.keys(profileChanges).length) {
+    const { error } = await admin.from("profiles").update(profileChanges).eq("id", userId);
+    if (error) redirect(`/admin/${role === "student" ? "students" : "teachers"}?error=save`);
+  }
 
   if (table) {
     const payload: Record<string, any> = {};
@@ -87,13 +126,34 @@ export async function updateProfileRecord(formData: FormData) {
         payload[key] = v === "" ? null : key === "roll_no" || key === "monthly_fee" ? Number(v) : v;
       }
     }
-    if (role === "teacher" && formData.has("assigned_classes")) {
-      payload.assigned_classes = formData.getAll("assigned_classes").map(String);
+    if (role === "teacher") {
+      const assignedClasses = [...new Set(formData.getAll("assigned_classes").map(String).filter(Boolean))];
+      if (assignedClasses.length) {
+        const { data: classes } = await admin.from("classes").select("id").in("id", assignedClasses);
+        if ((classes || []).length !== assignedClasses.length) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=classes`);
+      }
+      if (!String(payload.employee_id || "").trim()) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=save`);
+      payload.assigned_classes = assignedClasses;
     }
-    await admin.from(table).update(payload).eq("profile_id", userId);
+    if (role === "student") {
+      const { data: matchedClass } = payload.class_id
+        ? await admin.from("classes").select("id").eq("id", payload.class_id).maybeSingle()
+        : { data: null };
+      if (!matchedClass || !Number.isInteger(payload.roll_no) || payload.roll_no < 1 || !payload.admission_no) redirect("/admin/students?error=placement");
+    }
+    const { error } = await admin.from(table).update(payload).eq("profile_id", userId);
+    if (error) redirect(`/admin/${role === "student" ? "students" : "teachers"}?error=save`);
   }
   revalidatePath("/admin/users");
-  redirect("/admin/users?updated=1");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/teachers");
+  revalidatePath("/admin/salaries");
+  revalidatePath("/admin/fees");
+  revalidatePath("/admin/attendance");
+  const selectedRecord = String(formData.get("record_id") || "");
+  redirect(role === "student"
+    ? `/admin/students?student_id=${encodeURIComponent(selectedRecord)}&updated=1`
+    : `/admin/teachers?teacher_id=${encodeURIComponent(userId)}&updated=1`);
 }
 
 export async function toggleAccount(formData: FormData) {

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel, monthOptions } from "@/lib/utils";
 import { generateFeeMonths, markFeePending, recordManualPayment } from "@/lib/actions/fees";
+import { ensureStudentRecords } from "@/lib/admin-records";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   await requireAdmin("manage_fees");
   const sp = await searchParams;
   const admin = createAdminClient();
+  await ensureStudentRecords();
   const [{ data: students }, { data: records }, { data: classes }] = await Promise.all([
     admin.from("students").select("id, admission_no, monthly_fee, profile_id, class_id, profiles(full_name)").order("admission_no"),
     admin.from("fee_records").select("*").order("month"),

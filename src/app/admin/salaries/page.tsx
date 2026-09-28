@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel, monthOptions } from "@/lib/utils";
 import { addSalaryRecord, paySalary } from "@/lib/actions/fees";
+import { ensureTeacherRecords } from "@/lib/admin-records";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   await requireAdmin("manage_salaries");
   const sp = await searchParams;
   const admin = createAdminClient();
+  await ensureTeacherRecords();
   const { data: teachers } = await admin.from("teachers")
     .select("id, profile_id, employee_id, profiles(full_name)").order("employee_id");
   const { data: records } = await admin.from("salary_records")

@@ -9,13 +9,18 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   await requireSuperAdmin();
   const sp = await searchParams;
   const admin = createAdminClient();
-  const { data: users } = await admin.from("profiles").select("*").order("created_at", { ascending: false });
+  const [{ data: users }, { data: classes }] = await Promise.all([
+    admin.from("profiles").select("*").order("created_at", { ascending: false }),
+    admin.from("classes").select("id, name, section").order("name").order("section"),
+  ]);
 
   return (
     <>
       <PageHeader title="Users & Accounts" subtitle="Create and manage all login accounts." />
       {sp.created && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Account created: <b>@{sp.created}</b></div>}
       {sp.error === "exists" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Username already taken.</div>}
+      {sp.error === "missing" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Complete the account details, then provide the student admission number, class and roll number or the teacher employee ID and assigned classes.</div>}
+      {sp.error === "save" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Account details could not be saved. Check the class, roll number, and ID values and try again.</div>}
       {(sp.reset || sp.updated || sp.deleted) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Done.</div>}
       {sp.protected && <div className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">The super admin account is protected and cannot be deactivated.</div>}
 
@@ -29,7 +34,16 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <Field label="Username"><input name="username" className="input" required /></Field>
           <Field label="Password"><input name="password" className="input" required minLength={6} /></Field>
           <Field label="Full Name"><input name="full_name" className="input" required /></Field>
-          <Field label="Admission / Employee No."><input name="admission_no" className="input" placeholder="students / teachers" /></Field>
+          <Field label="Admission No. (student)"><input name="admission_no" className="input" placeholder="e.g. ADM-2026-001" /></Field>
+          <Field label="Employee ID (teacher)"><input name="employee_id" className="input" placeholder="e.g. EMP-001" /></Field>
+          <Field label="Student Class / Section"><select name="class_id" className="input" defaultValue="">
+            <option value="">Select class</option>
+            {(classes || []).map((item) => <option key={item.id} value={item.id}>{item.name} - {item.section}</option>)}
+          </select></Field>
+          <Field label="Student Roll No."><input name="roll_no" type="number" min={1} className="input" /></Field>
+          <Field label="Teacher Classes"><select name="assigned_classes" className="input" multiple size={4}>
+            {(classes || []).map((item) => <option key={item.id} value={item.id}>{item.name} - {item.section}</option>)}
+          </select></Field>
           <Field label="Phone"><input name="phone" className="input" /></Field>
           <Field label="Parent Name"><input name="parent_name" className="input" placeholder="students only" /></Field>
           <Field label="Parent Phone"><input name="parent_phone" className="input" placeholder="students only" /></Field>
@@ -39,7 +53,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <Field label="Address"><input name="address" className="input" /></Field>
         </div>
         <button className="btn-primary mt-4">Create Account</button>
-        <p className="mt-2 text-xs text-slate-400">Role-specific fields (class, roll no, DOB, subject, salary details) can be set after creation from Students / Teachers pages.</p>
+        <p className="mt-2 text-xs text-slate-400">Student accounts use one class and roll number. Teacher accounts can be assigned to multiple classes.</p>
       </form>
 
       {/* USERS TABLE */}

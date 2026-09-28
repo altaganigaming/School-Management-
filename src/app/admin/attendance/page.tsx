@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
-import { PageHeader, Badge } from "@/components/ui";
+import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import AttendanceRoster from "./attendance-roster";
 
 export const dynamic = "force-dynamic";
@@ -9,88 +9,98 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const profile = await requireAdmin();
   const sp = await searchParams;
   const today = new Date().toISOString().slice(0, 10);
-  const date = sp.date || today;
-  const fromDate = sp.from || date;
-  const toDate = sp.to || date;
+  const requestedDate = sp.date || today;
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && !Number.isNaN(Date.parse(`${requestedDate}T00:00:00`)) ? requestedDate : today;
   const admin = createAdminClient();
-  const [{ data: allClasses }, { data: teacher }] = await Promise.all([
+  const [{ data: allClasses }, teacherResult] = await Promise.all([
     admin.from("classes").select("id, name, section").order("name").order("section"),
-    profile.role === "teacher" ? admin.from("teachers").select("assigned_classes").eq("profile_id", profile.id).single() : Promise.resolve({ data: null }),
+    profile.role === "teacher"
+      ? admin.from("teachers").select("id, assigned_classes").eq("profile_id", profile.id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
-  const assigned = profile.role === "teacher" ? ((teacher?.assigned_classes || []) as unknown[]).map(String) : null;
-  const classes = assigned ? (allClasses || []).filter((item) => assigned.includes(item.id)) : allClasses || [];
-  const classId = sp.class_id && (!assigned || assigned.includes(sp.class_id)) ? sp.class_id : classes[0]?.id || "";
-  const [{ data: students }, { data: marked }] = await Promise.all([
-    admin.from("students").select("id, roll_no, profiles(full_name), class_id").eq("class_id", classId).order("roll_no"),
-    admin.from("attendance").select("student_id, status").eq("date", date),
-  ]);
+  const assignedIds = Array.isArray(teacherResult.data?.assigned_classes)
+    ? teacherResult.data.assigned_classes.map(String)
+    : [];
+  const availableClasses = profile.role === "teacher"
+    ? (allClasses || []).filter((item) => assignedIds.includes(item.id))
+    : allClasses || [];
+  const requestedClassId = sp.class_id || (profile.role === "teacher" ? "" : "all");
+  const selectedClassId = profile.role === "teacher"
+    ? (availableClasses.some((item) => item.id === requestedClassId) ? requestedClassId : availableClasses[0]?.id || "")
+    : requestedClassId === "all" || availableClasses.some((item) => item.id === requestedClassId) ? requestedClassId : "all";
+  const selectedClass = availableClasses.find((item) => item.id === selectedClassId);
+  let studentsQuery = admin.from("students").select("id, profile_id, admission_no, roll_no, class_id").not("class_id", "is", null).order("class_id").order("roll_no");
+  if (selectedClassId !== "all") studentsQuery = studentsQuery.eq("class_id", selectedClassId);
+  const { data: students } = selectedClassId || profile.role !== "teacher" ? await studentsQuery : { data: [] };
   const studentIds = (students || []).map((student) => student.id);
-  const { data: records } = studentIds.length
-    ? await admin.from("attendance").select("student_id, date, status").in("student_id", studentIds).gte("date", fromDate).lte("date", toDate)
+  const profileIds = [...new Set((students || []).map((student) => student.profile_id).filter(Boolean))];
+  const [{ data: studentProfiles }, { data: attendanceRows }] = await Promise.all([
+    profileIds.length ? admin.from("profiles").select("id, full_name").in("id", profileIds) : Promise.resolve({ data: [] }),
+    studentIds.length ? admin.from("attendance").select("student_id, status, marked_by, date").eq("date", date).in("student_id", studentIds) : Promise.resolve({ data: [] }),
+  ]);
+  const profileNames = new Map((studentProfiles || []).map((item) => [item.id, item.full_name]));
+  const roster = (students || []).map((student) => ({
+    ...student,
+    full_name: profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student",
+  }));
+  const markedMap = Object.fromEntries((attendanceRows || []).map((row) => [row.student_id, row.status]));
+  const classLabels = new Map((allClasses || []).map((item) => [item.id, `${item.name} - ${item.section}`]));
+  const submissionGroups = new Map<string, { classId: string; markerId: string | null; rows: Map<string, string> }>();
+  const studentClasses = new Map(roster.map((student) => [student.id, student.class_id]));
+  for (const row of attendanceRows || []) {
+    const rowClassId = studentClasses.get(row.student_id);
+    if (!rowClassId) continue;
+    const markerId = row.marked_by || null;
+    const key = `${rowClassId}:${markerId || "unknown"}`;
+    if (!submissionGroups.has(key)) submissionGroups.set(key, { classId: rowClassId, markerId, rows: new Map() });
+    submissionGroups.get(key)!.rows.set(row.student_id, row.status);
+  }
+  const markerIds = [...new Set([...submissionGroups.values()].map((group) => group.markerId).filter((id): id is string => Boolean(id)))];
+  const { data: markers } = markerIds.length
+    ? await admin.from("profiles").select("id, full_name").in("id", markerIds)
     : { data: [] };
-  const markedMap = Object.fromEntries((marked || []).filter((row) => studentIds.includes(row.student_id)).map((row) => [row.student_id, row.status]));
-  const studentTotals = new Map(studentIds.map((id) => [id, { present: 0, absent: 0 }]));
-  const { data: allStudents } = profile.role !== "teacher"
-    ? await admin.from("students").select("id, class_id, profiles(full_name)").not("class_id", "is", null).order("class_id").order("roll_no")
-    : { data: [] };
-  const allStudentIds = (allStudents || []).map((student) => student.id);
-  const { data: allMarked } = allStudentIds.length
-    ? await admin.from("attendance").select("student_id, status").eq("date", date).in("student_id", allStudentIds)
-    : { data: [] };
-  const monitorStatusMap = new Map((allMarked || []).map((row) => [row.student_id, row.status]));
-  const classSummary = (allClasses || []).map((item) => {
-    const classStudents = (allStudents || []).filter((student) => student.class_id === item.id);
-    const present = classStudents.filter((student) => monitorStatusMap.get(student.id) === "present").length;
-    const absent = classStudents.filter((student) => monitorStatusMap.get(student.id) === "absent").length;
-    return {
-      id: item.id,
-      label: `${item.name} - ${item.section}`,
-      present,
-      absent,
-      total: classStudents.length,
-    };
-  });
-  const monitorRows = (allStudents || [])
-    .filter((student) => monitorStatusMap.has(student.id))
-    .map((student) => {
-      const classInfo = allClasses?.find((item) => item.id === student.class_id);
-      const status = monitorStatusMap.get(student.id);
-      return {
-        classLabel: classInfo ? `${classInfo.name} - ${classInfo.section}` : "Unassigned",
-        studentName: Array.isArray(student.profiles) ? student.profiles[0]?.full_name || "Unnamed student" : student.profiles?.full_name || "Unnamed student",
-        status: status || "absent",
-      };
-    })
-    .sort((a, b) => a.classLabel.localeCompare(b.classLabel) || a.studentName.localeCompare(b.studentName));
-  (records || []).forEach((record) => {
-    const total = studentTotals.get(record.student_id);
-    if (total && record.status === "present") total.present += 1;
-    if (total && record.status === "absent") total.absent += 1;
-  });
-  const present = (records || []).filter((record) => record.status === "present").length;
-  const absent = (records || []).filter((record) => record.status === "absent").length;
-  const total = present + absent;
-  const classLabel = classes.find((item) => item.id === classId);
-  const getStudentName = (student: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
-    Array.isArray(student.profiles) ? student.profiles[0]?.full_name || "-" : student.profiles?.full_name || "-";
+  const markerNames = new Map((markers || []).map((marker) => [marker.id, marker.full_name]));
+  const statusMap = Object.fromEntries((attendanceRows || []).map((row) => [row.student_id, row.status]));
   return (
     <>
-      <PageHeader title="Attendance" subtitle={`${classLabel ? `${classLabel.name} - ${classLabel.section} · ` : ""}${date === today ? "Today" : date}${profile.role === "teacher" ? " · Assigned class" : ""}`} />
-      <form method="GET" className="card mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <label><span className="label">Class / Section</span><select name="class_id" className="input" defaultValue={classId}>{classes.map((item) => <option key={item.id} value={item.id}>{item.name} - {item.section}</option>)}</select></label>
-        <label><span className="label">Attendance date</span><input type="date" name="date" defaultValue={date} className="input" /></label>
-        <label><span className="label">Session</span><input value="Full day" readOnly className="input bg-slate-50" /></label>
-        <label><span className="label">Report from</span><input type="date" name="from" defaultValue={fromDate} className="input" /></label>
-        <label><span className="label">Report to</span><input type="date" name="to" defaultValue={toDate} className="input" /></label>
-        <button className="btn-secondary self-end">Load attendance</button>
+      <PageHeader title="Attendance" subtitle={profile.role === "teacher" ? "Take attendance for your assigned classes." : "Review attendance submitted by teachers."} />
+      {sp.saved && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Attendance saved for {date}.</div>}
+      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "class" ? "That class is not assigned to your account." : sp.error === "empty" ? "No students are assigned to this class." : "Attendance could not be loaded or saved. Check the date and try again."}</div>}
+      <form method="GET" className="card mb-6 flex flex-wrap items-end gap-4">
+        <label className="block"><span className="label">Class / Section</span>
+          <select name="class_id" className="input" defaultValue={selectedClassId} required>
+            {profile.role !== "teacher" && <option value="all">All classes</option>}
+            {availableClasses.map((item) => <option key={item.id} value={item.id}>{item.name} - {item.section}</option>)}
+          </select>
+        </label>
+        <label className="block"><span className="label">Attendance date</span><input type="date" name="date" defaultValue={date} className="input" required /></label>
+        <button className="btn-secondary">Load Attendance</button>
       </form>
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[['Present', present, 'text-emerald-600'], ['Absent', absent, 'text-red-600'], ['Marked', total, 'text-slate-700'], ['Percentage', total ? `${Math.round((present / total) * 100)}%` : "0%", 'text-primary-600']].map(([label, value, color]) => <div key={String(label)} className="card"><div className="text-xs text-slate-500">{label}</div><div className={`mt-1 text-2xl font-bold ${color}`}>{value}</div></div>)}
-      </div>
-      <div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
-        {profile.role === "teacher" ? <AttendanceRoster students={(students || []) as any} marked={markedMap} classId={classId} date={date} canEdit /> : <div className="card"><h2 className="card-title mb-2">Principal monitoring view</h2><p className="text-sm text-slate-500">Submitted attendance for {date}. Class and section totals are updated from teacher submissions.</p><div className="mt-4 overflow-x-auto"><table className="table"><thead><tr><th>Class / Section</th><th>Present</th><th>Absent</th><th>Total</th></tr></thead><tbody>{classSummary.map((item) => <tr key={item.id}><td className="font-medium">{item.label}</td><td><Badge color="green">{item.present}</Badge></td><td><Badge color="red">{item.absent}</Badge></td><td>{item.total}</td></tr>)}</tbody></table></div><div className="mt-5 overflow-x-auto"><h3 className="mb-2 text-sm font-semibold text-slate-700">Submitted student list</h3>{monitorRows.length ? <table className="table"><thead><tr><th>Class / Section</th><th>Student</th><th>Status</th></tr></thead><tbody>{monitorRows.map((row) => <tr key={`${row.classLabel}-${row.studentName}`}><td>{row.classLabel}</td><td>{row.studentName}</td><td><Badge color={row.status === "present" ? "green" : "red"}>{row.status === "present" ? "Present" : "Absent"}</Badge></td></tr>)}</tbody></table> : <p className="py-8 text-center text-sm text-slate-400">No attendance submitted yet for this date.</p>}</div></div>}
-        <div className="card overflow-x-auto"><h2 className="card-title mb-3">Student-wise report</h2><p className="mb-4 text-xs text-slate-500">{fromDate} to {toDate}</p><table className="table"><thead><tr><th>Student</th><th>P</th><th>A</th><th>%</th></tr></thead><tbody>{(students || []).map((student) => { const item = studentTotals.get(student.id) || { present: 0, absent: 0 }; const count = item.present + item.absent; return <tr key={student.id}><td className="font-medium">{getStudentName(student)}</td><td><Badge color="green">{item.present}</Badge></td><td><Badge color="red">{item.absent}</Badge></td><td>{count ? `${Math.round((item.present / count) * 100)}%` : "-"}</td></tr>; })}</tbody></table>{!students?.length && <p className="py-8 text-center text-sm text-slate-400">No students in this class.</p>}</div>
-      </div>
+      {profile.role === "teacher" ? (
+        selectedClassId
+          ? <AttendanceRoster students={roster} marked={statusMap} classId={selectedClassId} date={date} canEdit />
+          : <EmptyState message="No classes are assigned to your teacher account. Ask the principal to assign your classes." />
+      ) : (
+        <div className="space-y-6">
+          {[...submissionGroups.entries()].map(([key, group]) => {
+            const groupStudents = roster.filter((student) => student.class_id === group.classId);
+            const present = [...group.rows.values()].filter((status) => status === "present").length;
+            const absent = [...group.rows.values()].filter((status) => status === "absent").length;
+            return <section key={key} className="card overflow-x-auto">
+              <h2 className="card-title">{classLabels.get(group.classId) || "Class"} · {date}</h2>
+              <p className="mt-1 text-sm text-slate-500">Submitted by <b className="text-slate-800">{group.markerId ? markerNames.get(group.markerId) || "Unknown teacher" : "Unknown teacher"}</b> · {present} present · {absent} absent</p>
+              <table className="table mt-4">
+                <thead><tr><th>Roll No.</th><th>Student</th><th>Status</th></tr></thead>
+                <tbody>{groupStudents.map((student) => {
+                  const status = group.rows.get(student.id);
+                  return <tr key={student.id}><td className="font-mono text-xs">{student.roll_no ?? "—"}</td><td className="font-medium">{student.full_name}</td><td>{status ? <Badge color={status === "present" ? "green" : status === "absent" ? "red" : "amber"}>{status}</Badge> : <span className="text-slate-400">Not recorded</span>}</td></tr>;
+                })}</tbody>
+              </table>
+            </section>;
+          })}
+          {!submissionGroups.size && <EmptyState message={`No attendance has been submitted for ${selectedClassId === "all" ? "any class" : classLabels.get(selectedClassId) || "this class"} on ${date}.`} />}
+        </div>
+      )}
     </>
   );
 }
