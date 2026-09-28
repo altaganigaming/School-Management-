@@ -23,7 +23,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const profileById = new Map((profiles || []).map((profile) => [profile.id, profile]));
   const studentName = (student: { profile_id?: string | null; profiles?: { full_name?: string } | Array<{ full_name?: string }> | null; admission_no?: string | null }) => {
     const profile = Array.isArray(student.profiles) ? student.profiles[0] : student.profiles;
-    return profile?.full_name || profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student";
+    return profile?.full_name || profileNames.get(student.profile_id || "") || "Name unavailable";
   };
   const { data: classes } = await admin.from("classes").select("*").order("name");
   const selectedStudent = (students || []).find((student) => student.id === sp.student_id);
@@ -43,7 +43,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           <tbody>
             {(students || []).map((s) => (
               <tr key={s.id}>
-                <td className="font-mono text-xs">{s.admission_no}</td>
+                <td className="font-mono text-xs">{s.admission_no?.startsWith("LEGACY-") ? "—" : s.admission_no}</td>
                 <td className="font-medium">{studentName(s)}</td>
                 <td className="font-mono text-xs text-slate-400">@{s.profile_id ? profileById.get(s.profile_id)?.username : "—"}</td>
                 <td>{s.classes ? `${s.classes.name} - ${s.classes.section}` : "—"}</td>
@@ -63,7 +63,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           <label className="block"><span className="label">Student to edit</span>
             <select name="student_id" className="input" defaultValue={sp.student_id || ""} required>
               <option value="" disabled>Select a student</option>
-              {(students || []).filter((student) => student.profile_id).map((student) => <option key={student.id} value={student.id}>{student.admission_no} — {studentName(student)}</option>)}
+              {(students || []).filter((student) => student.profile_id).map((student) => <option key={student.id} value={student.id}>{studentName(student)}</option>)}
             </select>
           </label>
           <button className="btn-secondary">Load</button>

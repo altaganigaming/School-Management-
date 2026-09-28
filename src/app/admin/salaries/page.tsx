@@ -17,7 +17,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   const { data: records } = await admin.from("salary_records")
     .select("*, teachers(employee_id, profile_id, profiles(full_name))").order("month", { ascending: false });
   const teacherName = (teacher: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
-    Array.isArray(teacher.profiles) ? teacher.profiles[0]?.full_name || "Unnamed teacher" : teacher.profiles?.full_name || "Unnamed teacher";
+    Array.isArray(teacher.profiles) ? teacher.profiles[0]?.full_name || "Name unavailable" : teacher.profiles?.full_name || "Name unavailable";
 
   return (
     <>
@@ -29,7 +29,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
         <h2 className="card-title sm:col-span-4">➕ Add Salary Record</h2>
         <label className="block"><span className="label">Teacher</span>
           <select name="teacher_id" className="input" required>
-            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{t.employee_id} — {teacherName(t)}</option>)}
+            {(teachers || []).map((t) => <option key={t.id} value={t.id}>{teacherName(t)}</option>)}
           </select>
         </label>
         <label className="block"><span className="label">Month</span>
@@ -45,7 +45,7 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           <tbody>
             {(records || []).map((r) => (
               <tr key={r.id}>
-                <td className="font-medium">{r.teachers ? teacherName(r.teachers) : "Unknown teacher"}<br /><span className="font-mono text-xs text-slate-400">{r.teachers?.employee_id}</span></td>
+                <td className="font-medium">{r.teachers ? teacherName(r.teachers) : "Name unavailable"}</td>
                 <td>{monthLabel(r.month)}</td>
                 <td>{formatCurrency(r.amount)}</td>
                 <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>

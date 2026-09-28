@@ -25,7 +25,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   const classLabels = new Map((classes || []).map((item) => [item.id, `${item.name}-${item.section}`]));
   const studentName = (student: { profile_id?: string | null; profiles?: { full_name?: string } | Array<{ full_name?: string }> | null; admission_no?: string | null }) => {
     const profile = Array.isArray(student.profiles) ? student.profiles[0] : student.profiles;
-    return profile?.full_name || profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student";
+    return profile?.full_name || profileNames.get(student.profile_id || "") || "Name unavailable";
   };
   const byStudent = new Map<string, any[]>();
   for (const r of records ?? []) {
@@ -49,7 +49,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {studentName(s)}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{studentName(s)}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Month</span>
@@ -66,7 +66,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {studentName(s)}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{studentName(s)}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Starting Month</span>
@@ -85,7 +85,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <div className="mt-4 space-y-3">
             <label className="block"><span className="label">Student</span>
               <select name="student_id" className="input" required>
-                {(students || []).map((s) => <option key={s.id} value={s.id}>{s.admission_no} — {studentName(s)}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.id}>{studentName(s)}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Month</span>
@@ -109,7 +109,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
               <tbody>
                 {(records || []).map((r) => (
                   <tr key={r.id}>
-                    <td className="text-xs">{studentName(students?.find((s) => s.id === r.student_id) || { admission_no: r.student_id.slice(0, 6) })}</td>
+                    <td className="text-xs">{studentName(students?.find((s) => s.id === r.student_id) || {})}</td>
                     <td className="text-xs">{monthLabel(r.month)}</td>
                     <td className="text-xs">{formatCurrency(r.amount)}</td>
                     <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>

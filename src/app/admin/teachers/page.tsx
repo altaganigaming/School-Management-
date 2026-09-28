@@ -33,7 +33,7 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
           <tbody>
             {(teachers || []).map((t) => (
               <tr key={t.id}>
-                <td className="font-mono text-xs">{t.employee_id}</td>
+                <td className="font-mono text-xs">{t.employee_id?.startsWith("LEGACY-") ? "—" : t.employee_id}</td>
                 <td className="font-medium">{teacherProfile(t)?.full_name}</td>
                 <td><Badge color="blue">{t.subjects?.name || "—"}</Badge></td>
                 <td className="text-xs">{t.qualification}</td>
@@ -50,7 +50,7 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
         <label className="block"><span className="label">Teacher to edit</span>
           <select name="teacher_id" className="input" defaultValue={sp.teacher_id || ""} required>
             <option value="" disabled>Select a teacher</option>
-            {(teachers || []).map((teacher) => <option key={teacher.id} value={teacher.profile_id || ""}>{teacher.employee_id} — {teacherProfile(teacher)?.full_name || "Unnamed teacher"}</option>)}
+            {(teachers || []).map((teacher) => <option key={teacher.id} value={teacher.profile_id || ""}>{teacherProfile(teacher)?.full_name || "Name unavailable"}</option>)}
           </select>
         </label>
         <button className="btn-secondary">Load</button>

@@ -8,9 +8,11 @@ export const dynamic = "force-dynamic";
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const profile = await requireAdmin();
   const sp = await searchParams;
-  const today = new Date().toISOString().slice(0, 10);
+  const dateParts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const today = `${dateParts.find((part) => part.type === "year")?.value}-${dateParts.find((part) => part.type === "month")?.value}-${dateParts.find((part) => part.type === "day")?.value}`;
   const requestedDate = sp.date || today;
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && !Number.isNaN(Date.parse(`${requestedDate}T00:00:00`)) ? requestedDate : today;
+  const parsedDate = new Date(`${requestedDate}T00:00:00.000Z`);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && !Number.isNaN(parsedDate.getTime()) && parsedDate.toISOString().slice(0, 10) === requestedDate ? requestedDate : today;
   const admin = createAdminClient();
   const [{ data: allClasses }, teacherResult] = await Promise.all([
     admin.from("classes").select("id, name, section").order("name").order("section"),
@@ -28,7 +30,6 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const selectedClassId = profile.role === "teacher"
     ? (availableClasses.some((item) => item.id === requestedClassId) ? requestedClassId : availableClasses[0]?.id || "")
     : requestedClassId === "all" || availableClasses.some((item) => item.id === requestedClassId) ? requestedClassId : "all";
-  const selectedClass = availableClasses.find((item) => item.id === selectedClassId);
   let studentsQuery = admin.from("students").select("id, profile_id, admission_no, roll_no, class_id").not("class_id", "is", null).order("class_id").order("roll_no");
   if (selectedClassId !== "all") studentsQuery = studentsQuery.eq("class_id", selectedClassId);
   const { data: students } = selectedClassId || profile.role !== "teacher" ? await studentsQuery : { data: [] };
@@ -41,26 +42,30 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const profileNames = new Map((studentProfiles || []).map((item) => [item.id, item.full_name]));
   const roster = (students || []).map((student) => ({
     ...student,
-    full_name: profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student",
+    full_name: profileNames.get(student.profile_id || "") || "Name unavailable",
   }));
   const markedMap = Object.fromEntries((attendanceRows || []).map((row) => [row.student_id, row.status]));
   const classLabels = new Map((allClasses || []).map((item) => [item.id, `${item.name} - ${item.section}`]));
-  const submissionGroups = new Map<string, { classId: string; markerId: string | null; rows: Map<string, string> }>();
+  const submissionGroups = new Map<string, { classId: string; teacherIds: Set<string>; rows: Map<string, string> }>();
   const studentClasses = new Map(roster.map((student) => [student.id, student.class_id]));
   for (const row of attendanceRows || []) {
     const rowClassId = studentClasses.get(row.student_id);
     if (!rowClassId) continue;
-    const markerId = row.marked_by || null;
-    const key = `${rowClassId}:${markerId || "unknown"}`;
-    if (!submissionGroups.has(key)) submissionGroups.set(key, { classId: rowClassId, markerId, rows: new Map() });
-    submissionGroups.get(key)!.rows.set(row.student_id, row.status);
+    if (!submissionGroups.has(rowClassId)) submissionGroups.set(rowClassId, { classId: rowClassId, teacherIds: new Set(), rows: new Map() });
+    const group = submissionGroups.get(rowClassId)!;
+    if (row.marked_by) group.teacherIds.add(row.marked_by);
+    group.rows.set(row.student_id, row.status);
   }
-  const markerIds = [...new Set([...submissionGroups.values()].map((group) => group.markerId).filter((id): id is string => Boolean(id)))];
+  const markerIds = [...new Set([...submissionGroups.values()].flatMap((group) => [...group.teacherIds]))];
   const { data: markers } = markerIds.length
     ? await admin.from("profiles").select("id, full_name").in("id", markerIds)
     : { data: [] };
   const markerNames = new Map((markers || []).map((marker) => [marker.id, marker.full_name]));
   const statusMap = Object.fromEntries((attendanceRows || []).map((row) => [row.student_id, row.status]));
+  const presentCount = (attendanceRows || []).filter((row) => row.status === "present").length;
+  const absentCount = (attendanceRows || []).filter((row) => row.status === "absent").length;
+  const markedCount = (attendanceRows || []).length;
+  const attendanceRate = markedCount ? Math.round((presentCount / markedCount) * 100) : 0;
   return (
     <>
       <PageHeader title="Attendance" subtitle={profile.role === "teacher" ? "Take attendance for your assigned classes." : "Review attendance submitted by teachers."} />
@@ -76,6 +81,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         <label className="block"><span className="label">Attendance date</span><input type="date" name="date" defaultValue={date} className="input" required /></label>
         <button className="btn-secondary">Load Attendance</button>
       </form>
+      {profile.role !== "teacher" && <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[ ["Present", presentCount, "text-emerald-600"], ["Absent", absentCount, "text-red-600"], ["Marked", markedCount, "text-slate-700"], ["Present Rate", `${attendanceRate}%`, "text-primary-600"] ].map(([label, value, color]) => <div key={String(label)} className="card"><div className="text-xs text-slate-500">{label}</div><div className={`mt-1 text-2xl font-bold ${color}`}>{value}</div></div>)}
+      </div>}
       {profile.role === "teacher" ? (
         selectedClassId
           ? <AttendanceRoster students={roster} marked={statusMap} classId={selectedClassId} date={date} canEdit />
@@ -86,9 +94,10 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
             const groupStudents = roster.filter((student) => student.class_id === group.classId);
             const present = [...group.rows.values()].filter((status) => status === "present").length;
             const absent = [...group.rows.values()].filter((status) => status === "absent").length;
+            const teacherNames = [...group.teacherIds].map((id) => markerNames.get(id)).filter((name): name is string => Boolean(name));
             return <section key={key} className="card overflow-x-auto">
               <h2 className="card-title">{classLabels.get(group.classId) || "Class"} · {date}</h2>
-              <p className="mt-1 text-sm text-slate-500">Submitted by <b className="text-slate-800">{group.markerId ? markerNames.get(group.markerId) || "Unknown teacher" : "Unknown teacher"}</b> · {present} present · {absent} absent</p>
+              <p className="mt-1 text-sm text-slate-500">Submitted by <b className="text-slate-800">{teacherNames.length ? teacherNames.join(", ") : "Name unavailable"}</b> · {present} present · {absent} absent</p>
               <table className="table mt-4">
                 <thead><tr><th>Roll No.</th><th>Student</th><th>Status</th></tr></thead>
                 <tbody>{groupStudents.map((student) => {

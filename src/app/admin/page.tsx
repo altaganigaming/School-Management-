@@ -16,7 +16,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
     supabase.from("teachers").select("*", { count: "exact", head: true }),
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "staff"),
     supabase.from("payment_proofs").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("leave_requests").select("*").eq("status", "pending"),
+    supabase.from("leave_requests").select("*, profiles(full_name)").eq("status", "pending"),
   ]);
 
   const { data: feeAgg } = await supabase.from("fee_records").select("amount, status");
@@ -54,7 +54,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
               <tbody>
                 {pendingLeaves!.map((l) => (
                   <tr key={l.id}>
-                    <td className="font-medium">{l.profile_id}</td>
+                    <td className="font-medium">{Array.isArray(l.profiles) ? l.profiles[0]?.full_name || "Name unavailable" : l.profiles?.full_name || "Name unavailable"}</td>
                     <td>{l.from_date} → {l.to_date}</td>
                     <td className="max-w-xs truncate">{l.reason}</td>
                     <td><Link href="/admin/leave" className="text-primary-600 text-sm font-semibold">Review →</Link></td>

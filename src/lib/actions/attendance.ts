@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 
+function isValidDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 export async function saveAttendance(formData: FormData) {
   const profile = await requireAdmin();
   if (profile.role !== "teacher") return;
@@ -13,7 +19,7 @@ export async function saveAttendance(formData: FormData) {
   const classId = String(formData.get("class_id") || "");
   const date = String(formData.get("date") || "");
   const backToForm = `/admin/attendance?date=${encodeURIComponent(date)}&class_id=${encodeURIComponent(classId)}`;
-  if (!classId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00`))) {
+  if (!classId || !isValidDate(date)) {
     redirect(`/admin/attendance?error=invalid`);
   }
 
