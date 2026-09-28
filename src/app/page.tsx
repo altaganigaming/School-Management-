@@ -4,6 +4,7 @@ import { getSettings } from "@/lib/auth";
 import SiteHeader from "@/components/site-header";
 import SiteFooter from "@/components/site-footer";
 import { listGalleryImages } from "@/lib/gallery";
+import { PhotoViewer } from "@/components/photo-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -49,11 +50,9 @@ export default async function HomePage() {
           <div className="home-reveal relative mx-auto min-h-[320px] w-full max-w-xl lg:min-h-[450px]">
             <div className="absolute right-1 top-0 h-[72%] w-[76%] overflow-hidden rounded-[2rem] border border-white/25 bg-white/10 shadow-2xl shadow-black/30 backdrop-blur-sm sm:right-6 sm:w-[72%]">
               {gallery[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={gallery[0].url} alt={gallery[0].title} className="h-full w-full object-cover" />
+                <PhotoViewer src={gallery[0].url} alt={gallery[0].title || s.school_name} caption={gallery[0].title} className="absolute inset-0 h-full w-full" imageClassName="h-full w-full object-cover" />
               ) : s.hero_image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={s.hero_image} alt="School grounds" className="h-full w-full object-cover" />
+                <PhotoViewer src={s.hero_image} alt="School grounds" className="absolute inset-0 h-full w-full" imageClassName="h-full w-full object-cover" />
               ) : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary-700 to-accent-500 text-6xl text-white/80">✦</div>}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent" />
               <div className="absolute bottom-5 left-5 right-5">
@@ -120,7 +119,6 @@ export default async function HomePage() {
         <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {facilities.map((f, i) => (
             <article key={i} className={`home-lift relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl ${i === 0 ? "sm:col-span-2 sm:row-span-2 bg-primary-700 text-white" : ""}`}>
-              <span className={`font-mono text-xs ${i === 0 ? "text-white/60" : "text-primary-500"}`}>{String(i + 1).padStart(2, "0")}</span>
               <div className={`mb-8 mt-5 flex h-12 w-12 items-center justify-center rounded-xl text-xl ${i === 0 ? "bg-white/15 text-white" : "bg-primary-50 text-primary-700"}`}>✦</div>
               <div className={`max-w-xs font-display text-xl font-bold ${i === 0 ? "sm:text-3xl" : "text-slate-900"}`}>{f}</div>
               {i === 0 && <div className="absolute -bottom-10 -right-8 h-36 w-36 rounded-full border border-white/20" />}
@@ -168,7 +166,7 @@ export default async function HomePage() {
             <article key={t.id} className="home-lift group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary-100 via-white to-accent-400/20" />
               {t.profiles?.[0]?.avatar_url ? (
-                <img src={t.profiles[0].avatar_url} alt={t.profiles[0].full_name} loading="lazy" className="relative mx-auto h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-lg" />
+                <PhotoViewer src={t.profiles[0].avatar_url} alt={t.profiles[0].full_name || "Faculty member"} className="relative mx-auto h-20 w-20 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
               ) : (
                 <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
                   {(t.profiles?.[0]?.full_name || "T")[0]}
@@ -215,8 +213,8 @@ export default async function HomePage() {
         <div className="mt-8 grid auto-rows-[150px] grid-cols-2 gap-3 sm:auto-rows-[190px] sm:gap-4 md:grid-cols-4">
           {gallery.map((g, index) => (
             <figure key={g.name} className={`group relative overflow-hidden rounded-2xl bg-slate-200 shadow-lg shadow-slate-900/10 ${index === 0 ? "row-span-2 md:col-span-2" : index === 3 ? "md:col-span-2" : ""}`}>
-              <img src={g.url} alt={g.title} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent px-4 pb-4 pt-10 text-sm font-semibold text-white">{g.title}</figcaption>
+              <PhotoViewer src={g.url} alt={g.title || s.school_name} caption={g.title} className="h-full w-full" imageClassName="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              {g.title && <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent px-4 pb-4 pt-10 text-sm font-semibold text-white">{g.title}</figcaption>}
             </figure>
           ))}
         </div>

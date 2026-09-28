@@ -2,6 +2,7 @@ import SiteHeader from "@/components/site-header";
 import SiteFooter from "@/components/site-footer";
 import { getSettings } from "@/lib/auth";
 import { listGalleryImages } from "@/lib/gallery";
+import { PhotoViewer } from "@/components/photo-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,8 @@ export default async function GalleryPage() {
         <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
           {items.map((g) => (
             <figure key={g.name} className="group relative overflow-hidden rounded-xl">
-              <img src={g.url} alt={g.title} className="h-64 w-full object-cover transition group-hover:scale-105" />
-              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-sm font-medium text-white">
-                {g.title}
-              </figcaption>
+              <PhotoViewer src={g.url} alt={g.title || s.school_name} caption={g.title} className="h-64 w-full" imageClassName="h-full w-full object-cover transition group-hover:scale-105" />
+              {g.title && <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-sm font-medium text-white">{g.title}</figcaption>}
             </figure>
           ))}
         </div>

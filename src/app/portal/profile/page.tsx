@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudent } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
+import { PhotoViewer } from "@/components/photo-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function ProfilePage() {
     <div className="card max-w-2xl">
       <div className="mb-6 flex items-center gap-4">
         {profile.avatar_url
-          ? <img src={profile.avatar_url} className="h-20 w-20 rounded-full object-cover ring-4 ring-primary-100" alt="avatar" />
+          ? <PhotoViewer src={profile.avatar_url} className="h-20 w-20 rounded-full ring-4 ring-primary-100" imageClassName="h-full w-full rounded-full object-cover" alt={`${profile.full_name} profile photo`} />
           : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-bold text-primary-700">{(profile.full_name || "S")[0]}</div>}
         <div><div className="text-xl font-bold text-slate-900">{profile.full_name}</div>
           <div className="text-sm text-slate-500">Student · {s?.admission_no}</div></div>

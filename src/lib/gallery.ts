@@ -17,9 +17,16 @@ export async function listGalleryImages(limit = 1000) {
       const extension = file.name.split(".").pop()?.toLowerCase() || "";
       return mimeType ? mimeType.startsWith("image/") : IMAGE_EXTENSIONS.has(extension);
     })
-    .map((file) => ({
-      name: file.name,
-      title: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
-      url: supabase.storage.from("gallery").getPublicUrl(file.name).data.publicUrl,
-    }));
+    .map((file) => {
+      const title = file.name
+        .replace(/\.[^.]+$/, "")
+        .replace(/^\d{10,}[-_ ]+/, "")
+        .replace(/[-_]+/g, " ")
+        .trim();
+      return {
+        name: file.name,
+        title: /^(?:(?:photo|image|img)\s*)?\d+$/i.test(title) ? "" : title,
+        url: supabase.storage.from("gallery").getPublicUrl(file.name).data.publicUrl,
+      };
+    });
 }

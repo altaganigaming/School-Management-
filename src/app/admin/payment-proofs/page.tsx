@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel } from "@/lib/utils";
 import { approvePaymentProof, rejectPaymentProof } from "@/lib/actions/fees";
+import { PhotoViewer } from "@/components/photo-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,7 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
               </div>
               <div className="flex items-start gap-4">
                 {p.proof_url && (
-                  <a href={p.proof_url} target="_blank" rel="noreferrer">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.proof_url} alt="proof" className="h-28 w-28 rounded-lg object-cover ring-1 ring-slate-200 hover:scale-105 transition" />
-                  </a>
+                  <PhotoViewer src={p.proof_url} alt="Student payment proof" className="rounded-lg" imageClassName="h-28 w-28 rounded-lg object-cover ring-1 ring-slate-200 transition hover:scale-105" />
                 )}
                 {p.status === "pending" && (
                   <div className="flex flex-col gap-2">

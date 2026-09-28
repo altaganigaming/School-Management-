@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { addContent, deleteContent } from "@/lib/actions/content";
+import { PhotoViewer } from "@/components/photo-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function GalleryAdminPage({ searchParams }: { searchParams:
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {(items || []).map((g: any) => (
           <div key={g.id} className="card !p-3">
-            <img src={g.image_url} alt={g.title} className="h-36 w-full rounded-lg object-cover" />
+            <PhotoViewer src={g.image_url} alt={g.title || "Gallery photo"} caption={g.title} className="w-full rounded-lg" imageClassName="h-36 w-full rounded-lg object-cover" />
             <div className="mt-2 flex items-center justify-between">
               <span className="truncate text-sm">{g.title}</span>
               <form action={deleteContent.bind(null, "gallery")}><input type="hidden" name="id" value={g.id} />
