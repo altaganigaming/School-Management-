@@ -12,6 +12,15 @@ export default async function StudentsPage() {
   const { data: students } = await admin.from("students")
     .select("*, profiles(full_name, username, is_active, phone), classes(name, section)")
     .order("admission_no");
+  const profileIds = (students || []).map((student) => student.profile_id).filter((id): id is string => Boolean(id));
+  const { data: profiles } = profileIds.length
+    ? await admin.from("profiles").select("id, full_name").in("id", profileIds)
+    : { data: [] };
+  const profileNames = new Map((profiles || []).map((profile) => [profile.id, profile.full_name]));
+  const studentName = (student: { profile_id?: string | null; profiles?: { full_name?: string } | Array<{ full_name?: string }> | null; admission_no?: string | null }) => {
+    const profile = Array.isArray(student.profiles) ? student.profiles[0] : student.profiles;
+    return profile?.full_name || profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student";
+  };
   const { data: classes } = await admin.from("classes").select("*").order("name");
 
   return (
@@ -26,7 +35,7 @@ export default async function StudentsPage() {
             {(students || []).map((s) => (
               <tr key={s.id}>
                 <td className="font-mono text-xs">{s.admission_no}</td>
-                <td className="font-medium">{s.profiles?.full_name}</td>
+                <td className="font-medium">{studentName(s)}</td>
                 <td className="font-mono text-xs text-slate-400">@{s.profiles?.username}</td>
                 <td>{s.classes ? `${s.classes.name} - ${s.classes.section}` : "—"}</td>
                 <td>{s.roll_no ?? "—"}</td>
@@ -48,7 +57,7 @@ export default async function StudentsPage() {
             <input type="hidden" name="role" value="student" />
             <label className="block"><span className="label">Student</span>
               <select name="user_id" className="input" required>
-                {(students || []).map((s) => <option key={s.profile_id} value={s.profile_id}>{s.admission_no} — {s.profiles?.full_name}</option>)}
+                {(students || []).map((s) => <option key={s.id} value={s.profile_id}>{s.admission_no} — {studentName(s)}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Full Name</span><input name="full_name" className="input" /></label>

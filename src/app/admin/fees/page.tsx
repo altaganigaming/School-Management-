@@ -15,10 +15,15 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
     admin.from("fee_records").select("*").order("month"),
     admin.from("classes").select("id, name, section"),
   ]);
+  const profileIds = (students || []).map((student) => student.profile_id).filter((id): id is string => Boolean(id));
+  const { data: profiles } = profileIds.length
+    ? await admin.from("profiles").select("id, full_name").in("id", profileIds)
+    : { data: [] };
+  const profileNames = new Map((profiles || []).map((profile) => [profile.id, profile.full_name]));
   const classLabels = new Map((classes || []).map((item) => [item.id, `${item.name}-${item.section}`]));
-  const studentName = (student: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null; admission_no?: string | null }) => {
+  const studentName = (student: { profile_id?: string | null; profiles?: { full_name?: string } | Array<{ full_name?: string }> | null; admission_no?: string | null }) => {
     const profile = Array.isArray(student.profiles) ? student.profiles[0] : student.profiles;
-    return profile?.full_name || student.admission_no || "Unnamed student";
+    return profile?.full_name || profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student";
   };
   const byStudent = new Map<string, any[]>();
   for (const r of records ?? []) {

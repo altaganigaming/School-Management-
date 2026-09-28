@@ -4,6 +4,7 @@ import { getSettings } from "@/lib/auth";
 import SiteHeader from "@/components/site-header";
 import SiteFooter from "@/components/site-footer";
 import { submitAdmission } from "@/lib/actions/content";
+import { listGalleryImages } from "@/lib/gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +12,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const s = await getSettings();
   const supabase = await createClient();
-  const [{ data: notices }, { data: events }, { data: gallery }, { data: teachers }, { data: achievements }] = await Promise.all([
+  const [{ data: notices }, { data: events }, gallery, { data: teachers }, { data: achievements }] = await Promise.all([
     supabase.from("notices").select("*").eq("is_published", true).order("published_at", { ascending: false }).limit(5),
     supabase.from("events").select("*").order("event_date", { ascending: false }).limit(3),
-    supabase.from("gallery").select("*").order("created_at", { ascending: false }).limit(6),
+    listGalleryImages(6),
     supabase.from("teachers").select("id, qualification, profiles(full_name, avatar_url), subjects(name)").order("employee_id").limit(12),
     supabase.from("achievements").select("*").order("achieved_on", { ascending: false }).limit(4),
   ]);
@@ -38,7 +39,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <h1 className="mx-auto max-w-3xl font-display text-3xl font-bold leading-tight sm:text-6xl">{s.school_name}</h1>
           <p className="mt-3 text-base text-primary-100 sm:mt-4 sm:text-lg">{s.tagline}</p>
           <div className="mx-auto mt-7 grid w-full max-w-sm gap-3 sm:mt-8 sm:flex sm:max-w-none sm:justify-center">
-            <Link href="#admission-form" className="btn bg-white px-6 py-3 text-primary-700 hover:bg-primary-50">Apply for Admission</Link>
+            <Link href={s.admission_enabled !== false ? "#admission-form" : "/downloads"} className="btn bg-white px-6 py-3 text-primary-700 hover:bg-primary-50">{s.admission_enabled !== false ? "Apply for Admission" : "View Documents"}</Link>
           </div>
         </div>
       </section>
@@ -148,8 +149,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <Link href="/gallery" className="text-sm font-semibold text-primary-600 hover:underline">View all →</Link>
         </div>
         <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3">
-          {(gallery || []).map((g) => (
-            <img key={g.id} src={g.image_url} alt={g.title} loading="lazy" className="h-52 w-full rounded-xl object-cover hover:scale-[1.02] transition" />
+          {gallery.map((g) => (
+            <img key={g.name} src={g.url} alt={g.title} loading="lazy" className="h-52 w-full rounded-xl object-cover hover:scale-[1.02] transition" />
           ))}
         </div>
       </section>
@@ -190,7 +191,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <p className="mt-3 leading-relaxed text-slate-600">{s.admission_info}</p>
             {sp.admission === "sent" && <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Application submitted. The school office will contact you soon.</p>}
             {sp.admission === "error" && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Please fill in the required fields.</p>}
-            {s.admission_enabled !== false && <form id="admission-form" action={submitAdmission} className="mt-6 grid gap-3 sm:grid-cols-2">
+            {s.admission_enabled !== false && <form id="admission-form" action={submitAdmission} className="mt-6 scroll-mt-24 grid gap-3 sm:grid-cols-2">
               <input name="student_name" className="input" placeholder="Student name *" required />
               <input name="parent_name" className="input" placeholder="Parent name" />
               <input name="email" type="email" className="input" placeholder="Email *" required />
