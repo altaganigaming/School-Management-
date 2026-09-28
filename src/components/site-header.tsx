@@ -10,7 +10,7 @@ export default async function SiteHeader() {
   const links = [
     ["About", "/#about"], ["Facilities", "/#facilities"], ["Faculty", "/#faculty"],
     ["Gallery", "/gallery"], ["Notices", "/#notices"], ["Downloads", "/downloads"],
-    ["Admissions", "/#admissions"], ["Contact", "/#contact"],
+    ["Admissions", "/admissions"], ["Contact", "/#contact"],
   ];
 
   return (

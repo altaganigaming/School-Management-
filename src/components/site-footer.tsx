@@ -7,7 +7,7 @@ export default async function SiteFooter() {
   return (
     <>
     <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 py-2 text-[10px] shadow-[0_-4px_18px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
-      {[['/downloads', '⬇', 'Downloads'], ['/#notices', '📢', 'Notices'], [profile ? (profile.role === "student" ? "/portal" : "/admin") : "/login", '🔐', profile ? 'Dashboard' : 'Login / Dashboard'], ['/gallery', '▦', 'Gallery'], ['/#admissions', '📝', 'Admission']].map(([href, icon, label]) => <a key={href} href={href} className="flex min-w-0 flex-col items-center gap-0.5 text-slate-600"><span className="text-base">{icon}</span><span className="truncate">{label}</span></a>)}
+      {[['/downloads', '⬇', 'Downloads'], ['/#notices', '📢', 'Notices'], [profile ? (profile.role === "student" ? "/portal" : "/admin") : "/login", '🔐', profile ? 'Dashboard' : 'Login / Dashboard'], ['/gallery', '▦', 'Gallery'], ['/admissions', '📝', 'Admission']].map(([href, icon, label]) => <a key={href} href={href} className="flex min-w-0 flex-col items-center gap-0.5 text-slate-600"><span className="text-base">{icon}</span><span className="truncate">{label}</span></a>)}
     </nav>
     <footer className="mt-20 bg-slate-900 pb-20 text-slate-300 md:pb-0">
       <div className="page-wrap grid gap-10 py-14 md:grid-cols-3">
@@ -25,7 +25,7 @@ export default async function SiteFooter() {
           <div className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">Quick Links</div>
           <div className="grid grid-cols-2 gap-1 text-sm">
             <a href="/#about" className="hover:text-white">About</a>
-            <a href="/#admissions" className="hover:text-white">Admissions</a>
+            <a href="/admissions" className="hover:text-white">Admissions</a>
             <a href="/downloads" className="hover:text-white">Downloads</a>
             <a href="/gallery" className="hover:text-white">Gallery</a>
             <a href="/login" className="hover:text-white">Login</a>

@@ -62,6 +62,7 @@ create table public.teachers (
   qualification text,
   subject_id   uuid references public.subjects(id) on delete set null,
   assigned_classes jsonb not null default '[]'::jsonb, -- array of class ids
+  assigned_subjects jsonb not null default '[]'::jsonb, -- array of subject ids
   joining_date date,
   address      text,
   created_at   timestamptz not null default now()

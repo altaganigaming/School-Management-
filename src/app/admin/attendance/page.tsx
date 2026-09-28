@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
+import { deleteAttendance } from "@/lib/actions/attendance";
 import AttendanceRoster from "./attendance-roster";
 
 export const dynamic = "force-dynamic";
@@ -30,17 +31,18 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const selectedClassId = profile.role === "teacher"
     ? (availableClasses.some((item) => item.id === requestedClassId) ? requestedClassId : availableClasses[0]?.id || "")
     : requestedClassId === "all" || availableClasses.some((item) => item.id === requestedClassId) ? requestedClassId : "all";
-  let studentsQuery = admin.from("students").select("id, profile_id, admission_no, roll_no, class_id").not("class_id", "is", null).order("class_id").order("roll_no");
+  let studentsQuery = admin.from("students").select("id, profile_id, admission_no, roll_no, class_id, admission_date").not("class_id", "is", null).order("class_id").order("roll_no");
   if (selectedClassId !== "all") studentsQuery = studentsQuery.eq("class_id", selectedClassId);
   const { data: students } = selectedClassId || profile.role !== "teacher" ? await studentsQuery : { data: [] };
-  const studentIds = (students || []).map((student) => student.id);
-  const profileIds = [...new Set((students || []).map((student) => student.profile_id).filter(Boolean))];
+  const enrolledStudents = (students || []).filter((student) => student.admission_date <= date);
+  const studentIds = enrolledStudents.map((student) => student.id);
+  const profileIds = [...new Set(enrolledStudents.map((student) => student.profile_id).filter(Boolean))];
   const [{ data: studentProfiles }, { data: attendanceRows }] = await Promise.all([
     profileIds.length ? admin.from("profiles").select("id, full_name").in("id", profileIds) : Promise.resolve({ data: [] }),
-    studentIds.length ? admin.from("attendance").select("student_id, status, marked_by, date").eq("date", date).in("student_id", studentIds) : Promise.resolve({ data: [] }),
+    studentIds.length ? admin.from("attendance").select("student_id, status, marked_by, date, created_at").eq("date", date).in("student_id", studentIds) : Promise.resolve({ data: [] }),
   ]);
   const profileNames = new Map((studentProfiles || []).map((item) => [item.id, item.full_name]));
-  const roster = (students || []).map((student) => ({
+  const roster = enrolledStudents.map((student) => ({
     ...student,
     full_name: profileNames.get(student.profile_id || "") || "Name unavailable",
   }));
@@ -66,11 +68,16 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const absentCount = (attendanceRows || []).filter((row) => row.status === "absent").length;
   const markedCount = (attendanceRows || []).length;
   const attendanceRate = markedCount ? Math.round((presentCount / markedCount) * 100) : 0;
+  const hasTeacherSubmission = (attendanceRows || []).length > 0;
+  const withinTeacherDeleteWindow = hasTeacherSubmission && (attendanceRows || []).every((row) =>
+    row.marked_by === profile.id && Date.now() - new Date(row.created_at).getTime() <= 24 * 60 * 60 * 1000,
+  );
   return (
     <>
       <PageHeader title="Attendance" subtitle={profile.role === "teacher" ? "Take attendance for your assigned classes." : "Review attendance submitted by teachers."} />
       {sp.saved && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Attendance saved for {date}.</div>}
-      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "class" ? "That class is not assigned to your account." : sp.error === "empty" ? "No students are assigned to this class." : "Attendance could not be loaded or saved. Check the date and try again."}</div>}
+      {sp.deleted && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Attendance deleted. You can submit again.</div>}
+      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "class" ? "That class is not assigned to your account." : sp.error === "empty" ? "No students are assigned to this class." : sp.error === "expired" ? "Teachers can delete only their own complete attendance within 24 hours. Ask the principal to correct older attendance." : sp.error === "delete" ? "Attendance could not be deleted." : sp.error === "invalid" ? "Select a valid attendance date and class." : "Attendance could not be saved. Check the selected date and try again."}</div>}
       <form method="GET" className="card mb-6 flex flex-wrap items-end gap-4">
         <label className="block"><span className="label">Class / Section</span>
           <select name="class_id" className="input" defaultValue={selectedClassId} required>
@@ -86,7 +93,10 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       </div>}
       {profile.role === "teacher" ? (
         selectedClassId
-          ? <AttendanceRoster students={roster} marked={statusMap} classId={selectedClassId} date={date} canEdit />
+          ? <>
+              <p className="mb-4 text-sm text-slate-600">Teacher: <b className="text-slate-900">{profile.full_name || "Name unavailable"}</b> · {classLabels.get(selectedClassId)} · {date}</p>
+              <AttendanceRoster key={`${selectedClassId}:${date}`} students={roster} marked={statusMap} classId={selectedClassId} date={date} canEdit hasSubmitted={hasTeacherSubmission} canDelete={withinTeacherDeleteWindow} />
+            </>
           : <EmptyState message="No classes are assigned to your teacher account. Ask the principal to assign your classes." />
       ) : (
         <div className="space-y-6">
@@ -98,6 +108,11 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
             return <section key={key} className="card overflow-x-auto">
               <h2 className="card-title">{classLabels.get(group.classId) || "Class"} · {date}</h2>
               <p className="mt-1 text-sm text-slate-500">Submitted by <b className="text-slate-800">{teacherNames.length ? teacherNames.join(", ") : "Name unavailable"}</b> · {present} present · {absent} absent</p>
+              {profile.role === "super_admin" && <form action={deleteAttendance} className="mt-3">
+                <input type="hidden" name="class_id" value={group.classId} />
+                <input type="hidden" name="date" value={date} />
+                <button className="btn-danger btn-sm">Delete Attendance</button>
+              </form>}
               <table className="table mt-4">
                 <thead><tr><th>Roll No.</th><th>Student</th><th>Status</th></tr></thead>
                 <tbody>{groupStudents.map((student) => {

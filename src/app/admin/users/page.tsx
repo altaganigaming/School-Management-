@@ -9,9 +9,10 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   await requireSuperAdmin();
   const sp = await searchParams;
   const admin = createAdminClient();
-  const [{ data: users }, { data: classes }] = await Promise.all([
+  const [{ data: users }, { data: classes }, { data: subjects }] = await Promise.all([
     admin.from("profiles").select("*").order("created_at", { ascending: false }),
     admin.from("classes").select("id, name, section").order("name").order("section"),
+    admin.from("subjects").select("id, name").order("name"),
   ]);
 
   return (
@@ -41,9 +42,14 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             {(classes || []).map((item) => <option key={item.id} value={item.id}>{item.name} - {item.section}</option>)}
           </select></Field>
           <Field label="Student Roll No."><input name="roll_no" type="number" min={1} className="input" /></Field>
-          <Field label="Teacher Classes"><select name="assigned_classes" className="input" multiple size={4}>
-            {(classes || []).map((item) => <option key={item.id} value={item.id}>{item.name} - {item.section}</option>)}
-          </select></Field>
+          <Field label="Teacher Classes"><div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
+            <input type="hidden" name="assigned_classes" value="" />
+            {(classes || []).map((item) => <label key={item.id} className="flex items-center gap-2 text-sm"><input type="checkbox" name="assigned_classes" value={item.id} className="h-4 w-4" />{item.name} - {item.section}</label>)}
+          </div></Field>
+          <Field label="Teacher Subjects"><div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
+            <input type="hidden" name="assigned_subjects" value="" />
+            {(subjects || []).map((item) => <label key={item.id} className="flex items-center gap-2 text-sm"><input type="checkbox" name="assigned_subjects" value={item.id} className="h-4 w-4" />{item.name}</label>)}
+          </div></Field>
           <Field label="Phone"><input name="phone" className="input" /></Field>
           <Field label="Parent Name"><input name="parent_name" className="input" placeholder="students only" /></Field>
           <Field label="Parent Phone"><input name="parent_phone" className="input" placeholder="students only" /></Field>

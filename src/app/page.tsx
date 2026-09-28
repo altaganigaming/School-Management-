@@ -3,13 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/auth";
 import SiteHeader from "@/components/site-header";
 import SiteFooter from "@/components/site-footer";
-import { submitAdmission } from "@/lib/actions/content";
 import { listGalleryImages } from "@/lib/gallery";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await searchParams;
+export default async function HomePage() {
   const s = await getSettings();
   const supabase = await createClient();
   const [{ data: notices }, { data: events }, gallery, { data: teachers }, { data: achievements }] = await Promise.all([
@@ -38,9 +36,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </div>
           <h1 className="mx-auto max-w-3xl font-display text-3xl font-bold leading-tight sm:text-6xl">{s.school_name}</h1>
           <p className="mt-3 text-base text-primary-100 sm:mt-4 sm:text-lg">{s.tagline}</p>
-          <div className="mx-auto mt-7 grid w-full max-w-sm gap-3 sm:mt-8 sm:flex sm:max-w-none sm:justify-center">
-            <Link href={s.admission_enabled !== false ? "#admission-form" : "/downloads"} className="btn bg-white px-6 py-3 text-primary-700 hover:bg-primary-50">{s.admission_enabled !== false ? "Apply for Admission" : "View Documents"}</Link>
-          </div>
         </div>
       </section>
 
@@ -184,22 +179,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <div className="bg-gradient-to-br from-primary-600 to-primary-800 p-10 text-white md:w-1/3">
             <h2 className="font-display text-3xl font-bold">Admissions Open</h2>
             <p className="mt-3 text-primary-100">Give your child the gift of quality education.</p>
-            <Link href={s.admission_enabled !== false ? "#admission-form" : "/downloads"} className="btn mt-6 bg-white text-primary-700 hover:bg-primary-50">{s.admission_enabled !== false ? "Apply Online" : "View Documents"}</Link>
+            {s.admission_enabled === false && <Link href="/downloads" className="btn mt-6 bg-white text-primary-700 hover:bg-primary-50">View Documents</Link>}
           </div>
           <div className="p-10 md:w-2/3">
             <h3 className="font-bold text-slate-900">How to Apply</h3>
             <p className="mt-3 leading-relaxed text-slate-600">{s.admission_info}</p>
-            {sp.admission === "sent" && <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Application submitted. The school office will contact you soon.</p>}
-            {sp.admission === "error" && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Please fill in the required fields.</p>}
-            {s.admission_enabled !== false && <form id="admission-form" action={submitAdmission} className="mt-6 scroll-mt-24 grid gap-3 sm:grid-cols-2">
-              <input name="student_name" className="input" placeholder="Student name *" required />
-              <input name="parent_name" className="input" placeholder="Parent name" />
-              <input name="email" type="email" className="input" placeholder="Email *" required />
-              <input name="phone" type="tel" className="input" placeholder="Phone *" required />
-              <input name="class_name" className="input" placeholder="Class applying for" />
-              <input name="message" className="input" placeholder="Message" />
-              <button className="btn-primary sm:col-span-2">Submit Admission Enquiry</button>
-            </form>}
             <div className="mt-6 rounded-xl bg-primary-50 p-4 text-sm text-primary-800">
               📞 Contact the school office at {contact.phone} for enquiries.
             </div>

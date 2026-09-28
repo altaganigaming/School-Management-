@@ -16,9 +16,15 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
     .order("employee_id");
   const { data: subjects } = await admin.from("subjects").select("*").order("name");
   const { data: classes } = await admin.from("classes").select("id, name, section").order("name");
+  const subjectNames = new Map((subjects || []).map((subject) => [subject.id, subject.name]));
   const selectedTeacher = (teachers || []).find((teacher) => teacher.profile_id === sp.teacher_id);
   const teacherProfile = (teacher: { profiles?: { full_name?: string; username?: string; phone?: string; is_active?: boolean } | Array<{ full_name?: string; username?: string; phone?: string; is_active?: boolean }> | null }) =>
     Array.isArray(teacher.profiles) ? teacher.profiles[0] : teacher.profiles;
+  const teacherSubjectNames = (teacher: { assigned_subjects?: unknown; subject_id?: string | null; subjects?: { name?: string } | null }) => {
+    const assigned = Array.isArray(teacher.assigned_subjects) ? teacher.assigned_subjects.map(String) : teacher.subject_id ? [teacher.subject_id] : [];
+    const names = assigned.map((id) => subjectNames.get(id)).filter((name): name is string => Boolean(name));
+    return names.length ? names.join(", ") : teacher.subjects?.name || "—";
+  };
 
   return (
     <>
@@ -35,7 +41,7 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
               <tr key={t.id}>
                 <td className="font-mono text-xs">{t.employee_id?.startsWith("LEGACY-") ? "—" : t.employee_id}</td>
                 <td className="font-medium">{teacherProfile(t)?.full_name}</td>
-                <td><Badge color="blue">{t.subjects?.name || "—"}</Badge></td>
+                <td><Badge color="blue">{teacherSubjectNames(t)}</Badge></td>
                 <td className="text-xs">{t.qualification}</td>
                 <td className="text-xs">{t.joining_date || "—"}</td>
                 <td className="text-xs">{teacherProfile(t)?.phone || "—"}</td>
@@ -64,19 +70,30 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
           <label className="block"><span className="label">Full Name</span><input name="full_name" className="input" defaultValue={teacherProfile(selectedTeacher)?.full_name || ""} required /></label>
           <label className="block"><span className="label">Phone</span><input name="phone" className="input" defaultValue={teacherProfile(selectedTeacher)?.phone || ""} /></label>
           <label className="block"><span className="label">Qualification</span><input name="qualification" className="input" defaultValue={selectedTeacher.qualification || ""} /></label>
-          <label className="block"><span className="label">Subject</span>
-            <select name="subject_id" className="input" defaultValue={selectedTeacher.subject_id || ""}><option value="">—</option>
-              {(subjects || []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <label className="block"><span className="label">Subjects</span>
+            <input type="hidden" name="assigned_subjects" value="" />
+            <select name="assigned_subjects" className="input" multiple size={4} defaultValue={Array.isArray(selectedTeacher.assigned_subjects) && selectedTeacher.assigned_subjects.length ? selectedTeacher.assigned_subjects.map(String) : selectedTeacher.subject_id ? [selectedTeacher.subject_id] : []}>
+              {(subjects || []).map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
             </select>
           </label>
           <label className="block"><span className="label">Joining Date</span><input name="joining_date" type="date" className="input" defaultValue={selectedTeacher.joining_date || ""} /></label>
-          <label className="block sm:col-span-2"><span className="label">Assigned Classes</span>
-            <input type="hidden" name="assigned_classes" value="" />
-            <select name="assigned_classes" className="input" multiple size={4} defaultValue={((selectedTeacher.assigned_classes || []) as string[]).map(String)}>
-              {(classes || []).map((c) => <option key={c.id} value={c.id}>{c.name} - {c.section}</option>)}
-            </select>
-            <span className="text-xs text-slate-400">Ctrl/Cmd se multiple classes select kar sakte hain.</span>
-          </label>
+          <div className="block sm:col-span-2"><span className="label">Assigned Classes / Sections</span>
+            <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
+              <input type="hidden" name="assigned_classes" value="" />
+              {(classes || []).map((item) => <label key={item.id} className="flex items-center gap-2 text-sm"><input type="checkbox" name="assigned_classes" value={item.id} defaultChecked={((selectedTeacher.assigned_classes || []) as string[]).map(String).includes(item.id)} className="h-4 w-4" />{item.name} - {item.section}</label>)}
+            </div>
+          </div>
+          <div className="block sm:col-span-2"><span className="label">Assigned Subjects</span>
+            <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
+              <input type="hidden" name="assigned_subjects" value="" />
+              {(subjects || []).map((subject) => {
+                const currentSubjects = Array.isArray(selectedTeacher.assigned_subjects) && selectedTeacher.assigned_subjects.length
+                  ? selectedTeacher.assigned_subjects.map(String)
+                  : selectedTeacher.subject_id ? [selectedTeacher.subject_id] : [];
+                return <label key={subject.id} className="flex items-center gap-2 text-sm"><input type="checkbox" name="assigned_subjects" value={subject.id} defaultChecked={currentSubjects.includes(subject.id)} className="h-4 w-4" />{subject.name}</label>;
+              })}
+            </div>
+          </div>
           <div className="flex items-end"><button className="btn-primary w-full">Save Changes</button></div>
         </form>
       </div>}

@@ -31,15 +31,19 @@ export async function createAccount(formData: FormData) {
   const classId = String(formData.get("class_id") || "");
   const rollNo = Number(formData.get("roll_no"));
   const assignedClasses = [...new Set(formData.getAll("assigned_classes").map(String).filter(Boolean))];
+  const assignedSubjects = role === "teacher" ? [...new Set(formData.getAll("assigned_subjects").map(String).filter(Boolean))] : [];
   if (!username || !password || !fullName
     || (role === "student" && (!admissionNo || !classId || !Number.isInteger(rollNo) || rollNo < 1))
     || (role === "teacher" && (!employeeId || !assignedClasses.length))) redirect("/admin/users?error=missing");
 
   const selectedClassIds = role === "student" ? [classId] : role === "teacher" ? assignedClasses : [];
-  if (selectedClassIds.length) {
+  if (selectedClassIds.length || assignedSubjects.length) {
     const admin = createAdminClient();
-    const { data: classes } = await admin.from("classes").select("id").in("id", selectedClassIds);
-    if ((classes || []).length !== selectedClassIds.length) redirect("/admin/users?error=save");
+    const [{ data: classes }, { data: subjects }] = await Promise.all([
+      selectedClassIds.length ? admin.from("classes").select("id").in("id", selectedClassIds) : Promise.resolve({ data: [] }),
+      assignedSubjects.length ? admin.from("subjects").select("id").in("id", assignedSubjects) : Promise.resolve({ data: [] }),
+    ]);
+    if ((classes || []).length !== selectedClassIds.length || (subjects || []).length !== assignedSubjects.length) redirect("/admin/users?error=save");
   }
 
   const admin = createAdminClient();
@@ -80,7 +84,8 @@ export async function createAccount(formData: FormData) {
       profile_id: userId,
       employee_id: employeeId,
       qualification: String(formData.get("qualification") || ""),
-      subject_id: String(formData.get("subject_id") || "") || null,
+      subject_id: assignedSubjects[0] || null,
+      assigned_subjects: assignedSubjects,
       assigned_classes: assignedClasses,
       joining_date: String(formData.get("joining_date") || formData.get("admission_date") || "") || null,
       address: String(formData.get("address") || ""),
@@ -128,12 +133,19 @@ export async function updateProfileRecord(formData: FormData) {
     }
     if (role === "teacher") {
       const assignedClasses = [...new Set(formData.getAll("assigned_classes").map(String).filter(Boolean))];
+      const assignedSubjects = [...new Set(formData.getAll("assigned_subjects").map(String).filter(Boolean))];
       if (assignedClasses.length) {
         const { data: classes } = await admin.from("classes").select("id").in("id", assignedClasses);
         if ((classes || []).length !== assignedClasses.length) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=classes`);
       }
+      if (assignedSubjects.length) {
+        const { data: subjects } = await admin.from("subjects").select("id").in("id", assignedSubjects);
+        if ((subjects || []).length !== assignedSubjects.length) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=subjects`);
+      }
       if (!String(payload.employee_id || "").trim()) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=save`);
       payload.assigned_classes = assignedClasses;
+      payload.assigned_subjects = assignedSubjects;
+      payload.subject_id = assignedSubjects[0] || null;
     }
     if (role === "student") {
       const { data: matchedClass } = payload.class_id

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { getSettings, requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -16,13 +16,15 @@ const PERM: Record<Table, string> = {
 };
 
 export async function submitAdmission(formData: FormData) {
+  const settings = await getSettings();
+  if (settings.admission_enabled === false) redirect("/admissions?error=disabled");
   const supabase = await createClient();
   const value = (key: string) => String(formData.get(key) || "").trim();
   const studentName = value("student_name");
   const email = value("email");
   const phone = value("phone");
-  if (!studentName || !email || !phone) redirect("/?admission=error#admissions");
-  await supabase.from("admission_inquiries").insert({
+  if (!studentName || !email || !phone) redirect("/admissions?admission=error");
+  const { error } = await supabase.from("admission_inquiries").insert({
     student_name: studentName,
     parent_name: value("parent_name"),
     email,
@@ -30,7 +32,9 @@ export async function submitAdmission(formData: FormData) {
     class_name: value("class_name"),
     message: value("message"),
   });
-  redirect("/?admission=sent#admissions");
+  if (error) redirect("/admissions?admission=error");
+  revalidatePath("/admin/admissions");
+  redirect("/admissions?admission=sent");
 }
 
 export async function updateAdmissionStatus(formData: FormData) {

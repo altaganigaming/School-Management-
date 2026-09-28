@@ -1,24 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
-import { submitLeave } from "@/lib/actions/portal";
+import { reviewLeaveRequest, submitLeave } from "@/lib/actions/portal";
 
 export const dynamic = "force-dynamic";
-
-async function reviewLeave(formData: FormData) {
-  "use server";
-  const reviewer = await requireAdmin("manage_leave");
-  if (reviewer.role === "teacher") return;
-  const status = String(formData.get("status") || "");
-  if (status !== "approved" && status !== "rejected") return;
-  const admin = createAdminClient();
-  await admin.from("leave_requests").update({
-    status,
-    reviewed_by: reviewer.id,
-  }).eq("id", String(formData.get("id"))).eq("status", "pending");
-  const { revalidatePath } = await import("next/cache");
-  revalidatePath("/admin/leave");
-}
 
 export default async function LeavePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const me = await requireAdmin();
@@ -55,12 +40,12 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
             </div>
             {me.role !== "teacher" && l.status === "pending" && (
               <div className="flex gap-2">
-                <form action={reviewLeave}>
+                <form action={reviewLeaveRequest}>
                   <input type="hidden" name="id" value={l.id} />
                   <input type="hidden" name="status" value="approved" />
                   <button className="btn-primary btn-sm">Approve</button>
                 </form>
-                <form action={reviewLeave}>
+                <form action={reviewLeaveRequest}>
                   <input type="hidden" name="id" value={l.id} />
                   <input type="hidden" name="status" value="rejected" />
                   <button className="btn-danger btn-sm">Reject</button>

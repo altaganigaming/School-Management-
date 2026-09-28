@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireLogin, requireStudent } from "@/lib/auth";
+import { requireAdmin, requireLogin, requireStudent } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function isValidDate(value: string) {
@@ -49,4 +50,20 @@ export async function submitLeave(formData: FormData) {
   const destination = profile.role === "teacher" ? "/admin/leave" : "/portal/attendance";
   revalidatePath(destination);
   redirect(`${destination}?submitted=1`);
+}
+
+export async function reviewLeaveRequest(formData: FormData) {
+  const reviewer = await requireAdmin("manage_leave");
+  if (reviewer.role === "teacher") redirect("/admin");
+  const status = String(formData.get("status") || "");
+  const requestId = String(formData.get("id") || "");
+  if ((status !== "approved" && status !== "rejected") || !requestId) return;
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("leave_requests").update({ status, reviewed_by: reviewer.id })
+    .eq("id", requestId)
+    .eq("status", "pending");
+  if (error) return;
+  revalidatePath("/admin");
+  revalidatePath("/admin/leave");
 }
