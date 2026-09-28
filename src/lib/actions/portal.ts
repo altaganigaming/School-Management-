@@ -49,6 +49,7 @@ export async function submitLeave(formData: FormData) {
   if (error) redirect(profile.role === "teacher" ? "/admin/leave?error=save" : "/portal/attendance?leave=error");
   const destination = profile.role === "teacher" ? "/admin/leave" : "/portal/attendance";
   revalidatePath(destination);
+  if (profile.role === "teacher") revalidatePath("/admin");
   redirect(`${destination}?submitted=1`);
 }
 

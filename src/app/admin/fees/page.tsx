@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
+import { hasPerm } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel, monthOptions } from "@/lib/utils";
 import { generateFeeMonths, markFeePending, recordManualPayment } from "@/lib/actions/fees";
@@ -8,7 +10,10 @@ import { ensureStudentRecords } from "@/lib/admin-records";
 export const dynamic = "force-dynamic";
 
 export default async function FeesPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  await requireAdmin("manage_fees");
+  const profile = await requireAdmin("manage_fees");
+  if (profile.role === "teacher") {
+    redirect(hasPerm(profile.role, profile.permissions, "verify_payments") ? "/admin/payment-proofs" : "/admin?denied=1");
+  }
   const sp = await searchParams;
   const admin = createAdminClient();
   await ensureStudentRecords();

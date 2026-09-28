@@ -14,6 +14,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const profile = await requireAdmin();
   const supabase = await createClient();
   const canReviewLeaves = profile.role !== "teacher" && hasPerm(profile.role, profile.permissions, "manage_leave");
+  const canViewRevenue = profile.role !== "teacher" && hasPerm(profile.role, profile.permissions, "manage_fees");
 
   const [{ count: students }, { count: teachers }, { count: staff }, { count: pendingProofs }, { data: pendingLeaves }] = await Promise.all([
     supabase.from("students").select("*", { count: "exact", head: true }),
@@ -25,7 +26,9 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       : Promise.resolve({ data: [] }),
   ]);
 
-  const { data: feeAgg } = await supabase.from("fee_records").select("amount, status");
+  const { data: feeAgg } = canViewRevenue
+    ? await supabase.from("fee_records").select("amount, status")
+    : { data: [] };
   const paid = (feeAgg || []).filter((f) => f.status === "paid").reduce((a, b) => a + Number(b.amount), 0);
   const pending = (feeAgg || []).filter((f) => f.status === "pending").reduce((a, b) => a + Number(b.amount), 0);
 
@@ -45,8 +48,10 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           hint={pendingProofs ? <Link className="text-primary-600 underline" href="/admin/payment-proofs">Review now →</Link> : "All clear"} />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon="💰" label="Fees Collected" value={formatCurrency(paid)} />
-        <StatCard icon="⏳" label="Fees Pending" value={formatCurrency(pending)} />
+        {canViewRevenue && <>
+          <StatCard icon="💰" label="Fees Collected" value={formatCurrency(paid)} />
+          <StatCard icon="⏳" label="Fees Pending" value={formatCurrency(pending)} />
+        </>}
         <StatCard icon="🌴" label="Leave Requests" value={pendingLeaves?.length ?? 0} />
         <StatCard icon="🏫" label="Quick Access" value={<Link href="/admin/students" className="text-base text-primary-600 underline">Manage Students</Link>} />
       </div>

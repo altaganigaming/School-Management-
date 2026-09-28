@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Generate fee ledger rows for a student for a range of months. */
 export async function generateFeeMonths(formData: FormData) {
-  await requireAdmin("manage_fees");
+  const profile = await requireAdmin("manage_fees");
+  if (profile.role === "teacher") redirect("/admin?denied=1");
   const admin = createAdminClient();
   const studentId = String(formData.get("student_id"));
   const start = String(formData.get("start_month")); // YYYY-MM
@@ -34,7 +35,8 @@ export async function generateFeeMonths(formData: FormData) {
 
 /** Create or reset one student's selected month as pending. */
 export async function markFeePending(formData: FormData) {
-  await requireAdmin("manage_fees");
+  const profile = await requireAdmin("manage_fees");
+  if (profile.role === "teacher") redirect("/admin?denied=1");
   const admin = createAdminClient();
   const studentId = String(formData.get("student_id") || "");
   const month = String(formData.get("month") || "");
@@ -56,6 +58,7 @@ export async function markFeePending(formData: FormData) {
 /** Mark a fee month as paid directly (cash payment at office). */
 export async function recordManualPayment(formData: FormData) {
   const me = await requireAdmin("verify_payments");
+  if (me.role === "teacher") redirect("/admin/payment-proofs?denied=1");
   const admin = createAdminClient();
   const studentId = String(formData.get("student_id"));
   const month = String(formData.get("month"));

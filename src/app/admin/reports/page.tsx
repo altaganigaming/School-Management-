@@ -1,12 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { PageHeader, StatCard } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  await requireAdmin("manage_fees");
+  const profile = await requireAdmin("manage_fees");
+  if (profile.role === "teacher") redirect("/admin?denied=1");
   const admin = createAdminClient();
   const [{ count: totalStudents }, { data: feeRecords }, { data: receipts }, { data: attendance }] = await Promise.all([
     admin.from("students").select("*", { count: "exact", head: true }),
