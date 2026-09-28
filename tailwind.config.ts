@@ -6,13 +6,22 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          50: "#eef4ff", 100: "#dce7fd", 200: "#c0d4fc",
-          300: "#94b8fa", 400: "#6192f5", 500: "#3d6bef",
-          600: "#274ce4", 700: "#1f39d1", 800: "#2031a9",
-          900: "#1f2d85", 950: "#171e51"
+          50: "rgb(var(--primary-50) / <alpha-value>)",
+          100: "rgb(var(--primary-100) / <alpha-value>)",
+          200: "rgb(var(--primary-200) / <alpha-value>)",
+          300: "rgb(var(--primary-300) / <alpha-value>)",
+          400: "rgb(var(--primary-400) / <alpha-value>)",
+          500: "rgb(var(--primary-500) / <alpha-value>)",
+          600: "rgb(var(--primary-600) / <alpha-value>)",
+          700: "rgb(var(--primary-700) / <alpha-value>)",
+          800: "rgb(var(--primary-800) / <alpha-value>)",
+          900: "rgb(var(--primary-900) / <alpha-value>)",
+          950: "rgb(var(--primary-950) / <alpha-value>)",
         },
         accent: {
-          400: "#fbbf24", 500: "#f59e0b", 600: "#d97706"
+          400: "rgb(var(--accent-400) / <alpha-value>)",
+          500: "rgb(var(--accent-500) / <alpha-value>)",
+          600: "rgb(var(--accent-600) / <alpha-value>)",
         }
       },
       fontFamily: {

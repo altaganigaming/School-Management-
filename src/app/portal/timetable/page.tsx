@@ -8,15 +8,16 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 export default async function TimetablePage() {
   const profile = await requireStudent();
   const supabase = await createClient();
-  const { data: student } = await supabase.from("students").select("class_id").eq("profile_id", profile.id).single();
+  const { data: student } = await supabase.from("students").select("class_id, roll_no, classes(name, section)").eq("profile_id", profile.id).single();
   const { data: slots } = student?.class_id
     ? await supabase.from("timetable").select("*, subjects(name), teachers(profiles(full_name))").eq("class_id", student.class_id)
     : { data: [] };
   const maxPeriod = Math.max(6, ...(slots || []).map((t) => t.period_no));
+  const classInfo = Array.isArray(student?.classes) ? student.classes[0] : student?.classes;
   const teacherName = (teacher: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
     Array.isArray(teacher.profiles) ? teacher.profiles[0]?.full_name : teacher.profiles?.full_name;
   return (<>
-    <PageHeader title="Timetable" subtitle="Your weekly class schedule." />
+    <PageHeader title="Timetable" subtitle={classInfo ? `${classInfo.name} - ${classInfo.section} · Roll No. ${student?.roll_no ?? "—"}` : "Your weekly class schedule."} />
     <div className="card overflow-x-auto">
       <table className="table">
         <thead><tr><th>Day</th>{Array.from({ length: maxPeriod }, (_, i) => <th key={i}>P{i + 1}</th>)}</tr></thead>

@@ -8,28 +8,41 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 
 async function addSlot(formData: FormData) {
   "use server";
+  const { requireAdmin: require } = await import("@/lib/auth");
+  await require("manage_timetable");
   const { createClient: cc } = await import("@/lib/supabase/server");
   const supabase = await cc();
-  await supabase.from("timetable").upsert({
-    class_id: String(formData.get("class_id")),
-    day_of_week: Number(formData.get("day_of_week")),
-    period_no: Number(formData.get("period_no")),
+  const classId = String(formData.get("class_id") || "");
+  const dayOfWeek = Number(formData.get("day_of_week"));
+  const periodNo = Number(formData.get("period_no"));
+  if (!classId || !Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 6 || !Number.isInteger(periodNo) || periodNo < 1) return;
+  const { data: classRecord } = await supabase.from("classes").select("id").eq("id", classId).maybeSingle();
+  if (!classRecord) return;
+  const { error } = await supabase.from("timetable").upsert({
+    class_id: classId,
+    day_of_week: dayOfWeek,
+    period_no: periodNo,
     subject_id: String(formData.get("subject_id")) || null,
     teacher_id: String(formData.get("teacher_id")) || null,
     start_time: String(formData.get("start_time")) || null,
     end_time: String(formData.get("end_time")) || null,
   }, { onConflict: "class_id,day_of_week,period_no" });
+  if (error) return;
   const { revalidatePath } = await import("next/cache");
   revalidatePath("/admin/timetable");
+  revalidatePath("/portal/timetable");
 }
 
 async function deleteSlot(formData: FormData) {
   "use server";
+  const { requireAdmin: require } = await import("@/lib/auth");
+  await require("manage_timetable");
   const { createClient: cc } = await import("@/lib/supabase/server");
   const supabase = await cc();
   await supabase.from("timetable").delete().eq("id", String(formData.get("id")));
   const { revalidatePath } = await import("next/cache");
   revalidatePath("/admin/timetable");
+  revalidatePath("/portal/timetable");
 }
 
 export default async function TimetablePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
@@ -42,7 +55,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
     supabase.from("teachers").select("id, profiles(full_name)").order("employee_id"),
     supabase.from("timetable").select("*, subjects(name), teachers(profiles(full_name))"),
   ]);
-  const classId = sp.class_id || classes?.[0]?.id;
+  const classId = classes?.some((item) => item.id === sp.class_id) ? sp.class_id : classes?.[0]?.id || "";
   const mySlots = (slots || []).filter((t) => t.class_id === classId);
   const maxPeriod = Math.max(6, ...mySlots.map((t) => t.period_no));
   const teacherName = (teacher: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
@@ -50,7 +63,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Timetable" subtitle="Weekly period schedule per class." />
+      <PageHeader title="Timetable" subtitle={`Weekly period schedule for ${classes?.find((item) => item.id === classId)?.name || "class"} - ${classes?.find((item) => item.id === classId)?.section || "section"}.`} />
       <form method="GET" className="card mb-6 flex flex-wrap items-end gap-4">
         <label className="block"><span className="label">Class</span>
           <select name="class_id" className="input" defaultValue={classId}>

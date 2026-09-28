@@ -7,12 +7,13 @@ export const dynamic = "force-dynamic";
 export default async function HomeworkPage() {
   const profile = await requireStudent();
   const supabase = await createClient();
-  const { data: student } = await supabase.from("students").select("class_id").eq("profile_id", profile.id).single();
+  const { data: student } = await supabase.from("students").select("class_id, classes(name, section)").eq("profile_id", profile.id).single();
   const { data: items } = student?.class_id
     ? await supabase.from("homework").select("*, subjects(name)").eq("class_id", student.class_id).order("due_date", { ascending: false })
     : { data: [] };
+  const classInfo = Array.isArray(student?.classes) ? student.classes[0] : student?.classes;
   return (<>
-    <PageHeader title="Homework" subtitle="Assignments for your class." />
+    <PageHeader title="Homework" subtitle={classInfo ? `Assignments for ${classInfo.name} - ${classInfo.section}.` : "Assignments for your class."} />
     <div className="space-y-3">
       {(items || []).map((h) => (
         <div key={h.id} className="card">

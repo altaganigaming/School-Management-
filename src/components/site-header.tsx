@@ -30,18 +30,28 @@ export default async function SiteHeader() {
             <div className="text-[11px] text-slate-500">{settings.tagline || ""}</div>
           </div>
         </Link>
-        <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 lg:flex">
-          {links.map(([label, href]) => (
-            <Link key={href} href={href} className="hover:text-primary-600">{label}</Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-2">
-          {profile ? (
-            <Link href={profile.role === "student" ? "/portal" : "/admin"} className="btn-primary btn-sm">Dashboard</Link>
-          ) : (
-            <Link href="/login" className="btn-primary btn-sm">Login</Link>
-          )}
-        </div>
+        <details className="group relative">
+          <summary aria-label="Open website menu" className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+            <span className="sr-only">Open website menu</span>
+            <span aria-hidden="true" className="flex w-5 flex-col gap-1">
+              <span className="h-0.5 w-full rounded bg-current" />
+              <span className="h-0.5 w-full rounded bg-current" />
+              <span className="h-0.5 w-full rounded bg-current" />
+            </span>
+          </summary>
+          <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-2 shadow-xl">
+            <nav className="grid gap-1 text-sm">
+              {links.map(([label, href]) => (
+                <Link key={href} href={href} className="rounded-md px-3 py-2 text-slate-700 hover:bg-primary-50 hover:text-primary-800">{label}</Link>
+              ))}
+            </nav>
+            <div className="mt-2 border-t border-slate-200 pt-2">
+              <Link href={profile ? (profile.role === "student" ? "/portal" : "/admin") : "/login"} className="block rounded-md px-3 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50">
+                {profile ? "Dashboard" : "Login"}
+              </Link>
+            </div>
+          </div>
+        </details>
       </div>
     </header>
     </>

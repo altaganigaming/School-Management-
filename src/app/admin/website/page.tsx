@@ -1,6 +1,7 @@
 import { requireAdmin, getSettings } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { saveSettings } from "@/lib/actions/accounts";
+import { ColorThemePicker } from "@/components/color-theme-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const s = await getSettings();
   const contact = s.contact || {};
+  const primaryColor = typeof s.primary_color === "string" && /^#[0-9a-f]{6}$/i.test(s.primary_color) ? s.primary_color : "#274CE4";
+  const accentColor = typeof s.accent_color === "string" && /^#[0-9a-f]{6}$/i.test(s.accent_color) ? s.accent_color : "#F59E0B";
 
   return (
     <>
@@ -59,6 +62,12 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
             <input type="checkbox" name="value:admission_enabled" value="true" defaultChecked={s.admission_enabled !== false} className="h-5 w-5" />
             <span><b>Online admissions enabled</b><br /><span className="text-xs text-primary-700">Show the application form on the home page.</span></span>
           </label>
+        </div>
+
+        <div className="card">
+          <h2 className="card-title mb-2">Website Color Theme</h2>
+          <p className="mb-4 text-sm text-slate-500">Choose a matched palette or set a custom primary hex color.</p>
+          <ColorThemePicker initialPrimary={primaryColor} initialAccent={accentColor} />
         </div>
 
         <div className="card">
