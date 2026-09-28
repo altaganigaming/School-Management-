@@ -89,7 +89,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
                       {slot ? (
                         <div className="rounded-lg bg-primary-50 p-1.5 text-xs">
                           <b className="text-primary-800">{slot.subjects?.name ?? "—"}</b>
-                          <div className="text-slate-500">{slot.teachers?.profiles?.full_name ?? ""}</div>
+                          <div className="text-slate-500">{slot.teachers ? teacherName(slot.teachers) : ""}</div>
                           <form action={deleteSlot}><input type="hidden" name="id" value={slot.id} />
                             <button className="text-red-500 hover:underline">remove</button></form>
                         </div>

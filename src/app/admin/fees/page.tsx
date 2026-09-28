@@ -10,16 +10,16 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   await requireAdmin("manage_fees");
   const sp = await searchParams;
   const admin = createAdminClient();
-  const [{ data: students }, { data: records }, { data: profiles }, { data: classes }] = await Promise.all([
-    admin.from("students").select("id, admission_no, monthly_fee, profile_id, class_id").order("admission_no"),
+  const [{ data: students }, { data: records }, { data: classes }] = await Promise.all([
+    admin.from("students").select("id, admission_no, monthly_fee, profile_id, class_id, profiles(full_name)").order("admission_no"),
     admin.from("fee_records").select("*").order("month"),
-    admin.from("profiles").select("id, full_name"),
     admin.from("classes").select("id, name, section"),
   ]);
-  const profileNames = new Map((profiles || []).map((profile) => [profile.id, profile.full_name]));
   const classLabels = new Map((classes || []).map((item) => [item.id, `${item.name}-${item.section}`]));
-  const studentName = (student: { profile_id?: string | null; admission_no?: string | null }) =>
-    profileNames.get(student.profile_id || "") || student.admission_no || "Unnamed student";
+  const studentName = (student: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null; admission_no?: string | null }) => {
+    const profile = Array.isArray(student.profiles) ? student.profiles[0] : student.profiles;
+    return profile?.full_name || student.admission_no || "Unnamed student";
+  };
   const byStudent = new Map<string, any[]>();
   for (const r of records ?? []) {
     if (!byStudent.has(r.student_id)) byStudent.set(r.student_id, []);

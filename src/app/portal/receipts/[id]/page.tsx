@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudent, getSettings } from "@/lib/auth";
 import { formatCurrency, monthLabel } from "@/lib/utils";
+import { DownloadPdfButton } from "@/components/download-pdf-button";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div id="receipt" className="card !p-10">
+      <div id="receipt" className="card !p-10 print-document">
         <div className="text-center">
           <h1 className="font-display text-2xl font-bold">{s.school_name}</h1>
           <p className="text-sm text-slate-500">{s.contact?.address} · {s.contact?.phone}</p>
@@ -40,7 +41,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           <div className="mt-8 border-t border-slate-300 pt-1">Authorized Signature</div>
         </div>
       </div>
-      <a href="#receipt" download={`receipt-${r.receipt_no}.html`} className="btn-primary mt-4 block w-full text-center">Download Receipt</a>
+      <DownloadPdfButton />
     </div>
   );
 }

@@ -22,3 +22,21 @@ body { @apply bg-slate-50 text-slate-800 antialiased; }
 
 .page-wrap { @apply mx-auto w-full max-w-7xl px-4 sm:px-6; }
 .section-title { @apply font-display text-3xl font-bold text-slate-900 sm:text-4xl; }
+
+@media print {
+	@page { margin: 14mm; }
+	body { background: #fff !important; }
+	body * { visibility: hidden !important; }
+	.print-document, .print-document * { visibility: visible !important; }
+	.print-document {
+		position: absolute !important;
+		inset: 0 auto auto 0 !important;
+		width: 100% !important;
+		max-width: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		box-shadow: none !important;
+		border: 0 !important;
+	}
+	.print-hidden { display: none !important; }
+}

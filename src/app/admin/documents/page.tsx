@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { addContent, deleteContent } from "@/lib/actions/content";
+import { downloadUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
                 <td className="font-medium">{d.title}</td>
                 <td><Badge color="blue">{d.category || "general"}</Badge></td>
                 <td><Badge color={d.audience === "public" ? "green" : d.audience === "student" ? "blue" : "purple"}>{d.audience}</Badge></td>
-                <td><a href={d.file_url} download={d.title} target="_blank" className="text-sm text-primary-600 underline">Download ⭳</a></td>
+                <td><a href={downloadUrl(d.file_url, d.title)} className="text-sm text-primary-600 underline">Download ⭳</a></td>
                 <td className="text-right">
                   <form action={deleteContent.bind(null, "documents")}><input type="hidden" name="id" value={d.id} />
                     <button className="btn-danger btn-sm">Delete</button></form>

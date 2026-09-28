@@ -175,6 +175,6 @@ export async function saveSettings(formData: FormData) {
     }
     await supabase.from("school_settings").upsert({ key, value });
   }
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   redirect("/admin/settings?saved=1");
 }

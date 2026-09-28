@@ -2,6 +2,12 @@ export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
+export function downloadUrl(url: string, filename: string) {
+  const [resource, fragment] = url.split("#", 2);
+  const separator = resource.includes("?") ? "&" : "?";
+  return `${resource}${separator}download=${encodeURIComponent(filename)}${fragment ? `#${fragment}` : ""}`;
+}
+
 export function formatCurrency(n: number | string | null) {
   const v = Number(n ?? 0);
   return "₹" + v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

@@ -15,7 +15,7 @@ export default async function GalleryAdminPage({ searchParams }: { searchParams:
     <>
       <PageHeader title="Gallery" subtitle="Photos shown on the public website." />
       {sp.added && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Uploaded.</div>}
-      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Photo upload failed. Please check the image and try again.</div>}
+      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "bucket" ? "Gallery storage could not be initialized. Check Supabase Storage and the service-role key." : "Photo upload failed. Please check the image and try again."}</div>}
       <form action={addContent.bind(null, "gallery")} encType="multipart/form-data" className="card mb-6 grid gap-4 sm:grid-cols-3">
         <label className="block"><span className="label">Title</span><input name="title" className="input" required /></label>
         <label className="block"><span className="label">Image</span><input name="file" type="file" accept="image/*" className="input" required /></label>

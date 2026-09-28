@@ -13,6 +13,8 @@ export default async function TimetablePage() {
     ? await supabase.from("timetable").select("*, subjects(name), teachers(profiles(full_name))").eq("class_id", student.class_id)
     : { data: [] };
   const maxPeriod = Math.max(6, ...(slots || []).map((t) => t.period_no));
+  const teacherName = (teacher: { profiles?: { full_name?: string } | Array<{ full_name?: string }> | null }) =>
+    Array.isArray(teacher.profiles) ? teacher.profiles[0]?.full_name : teacher.profiles?.full_name;
   return (<>
     <PageHeader title="Timetable" subtitle="Your weekly class schedule." />
     <div className="card overflow-x-auto">
@@ -29,7 +31,7 @@ export default async function TimetablePage() {
                     {slot ? (
                       <div className="rounded-lg bg-primary-50 p-2">
                         <b className="text-primary-800">{slot.subjects?.name ?? "—"}</b>
-                        {slot.teachers?.profiles?.[0]?.full_name && <div className="text-slate-500">{slot.teachers.profiles[0].full_name}</div>}
+                        {slot.teachers && teacherName(slot.teachers) && <div className="text-slate-500">{teacherName(slot.teachers)}</div>}
                         {slot.start_time && <div className="text-slate-400">{String(slot.start_time).slice(0, 5)}–{String(slot.end_time).slice(0, 5)}</div>}
                       </div>
                     ) : <span className="text-slate-300">—</span>}

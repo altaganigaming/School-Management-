@@ -68,15 +68,18 @@ export async function addContent(table: Table, formData: FormData) {
   if (file && file.size > 0) {
     const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
     const storageApi = createAdminClient().storage;
-    let storage = storageApi.from(bucket);
-    let { error } = await storage.upload(path, file, { contentType: file.type || undefined });
-    if (error?.message.toLowerCase().includes("not found") && table === "gallery") {
-      await storageApi.createBucket("gallery", { public: true });
-      storage = storageApi.from(bucket);
-      ({ error } = await storage.upload(path, file, { contentType: file.type || undefined }));
+    if (table === "gallery") {
+      const { error: bucketError } = await storageApi.getBucket(bucket);
+      if (bucketError) {
+        const { error: createError } = await storageApi.createBucket(bucket, { public: true });
+        if (createError && !createError.message.toLowerCase().includes("already exists")) {
+          redirect(`/admin/${table}?error=bucket`);
+        }
+      }
     }
+    const { error } = await storageApi.from(bucket).upload(path, file, { contentType: file.type || undefined });
     if (error) redirect(`/admin/${table}?error=${encodeURIComponent(error.message.slice(0, 80))}`);
-    const url = storage.getPublicUrl(path).data.publicUrl;
+    const url = storageApi.from(bucket).getPublicUrl(path).data.publicUrl;
     if (table === "gallery") payload.image_url = url; else payload.file_url = url;
   }
   if (table === "gallery" && !payload.image_url) payload.image_url = f("image_url");
