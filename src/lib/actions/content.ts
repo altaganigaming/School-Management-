@@ -102,6 +102,26 @@ export async function deleteContent(table: Table, formData: FormData) {
   revalidatePath(`/admin/${table}`);
 }
 
+export async function deleteGalleryPhoto(formData: FormData) {
+  await requireAdmin("manage_gallery");
+  const path = String(formData.get("path") || "");
+  if (!path || path.includes("/") || path.includes("..")) redirect("/admin/gallery?error=delete");
+  const admin = createAdminClient();
+  const storage = admin.storage.from("gallery");
+  const { data: files, error: listError } = await storage.list("", { limit: 1000 });
+  if (listError || !files?.some((file) => file.name === path && file.id)) redirect("/admin/gallery?error=delete");
+  const publicUrl = storage.getPublicUrl(path).data.publicUrl;
+  const [{ error: storageError }, { error: rowError }] = await Promise.all([
+    storage.remove([path]),
+    admin.from("gallery").delete().eq("image_url", publicUrl),
+  ]);
+  if (storageError || rowError) redirect("/admin/gallery?error=delete");
+  revalidatePath("/admin/gallery");
+  revalidatePath("/gallery");
+  revalidatePath("/");
+  redirect("/admin/gallery?deleted=1");
+}
+
 export async function toggleNotice(formData: FormData) {
   await requireAdmin("manage_notices");
   const supabase = await createClient();

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudent } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
-import { submitLeave } from "@/lib/actions/portal";
+import { deleteLeaveRequest, submitLeave } from "@/lib/actions/portal";
 
 export const dynamic = "force-dynamic";
 
@@ -44,14 +44,15 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       {!records?.length && <EmptyState message="No attendance records yet." />}
     </div>
 
-    <div className="card mt-6 overflow-x-auto">
+      <div className="card mt-6 overflow-x-auto">
       <h2 className="card-title mb-3">My Leave Requests</h2>
       <table className="table">
-        <thead><tr><th>Dates</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
+        <thead><tr><th>Dates</th><th>Type</th><th>Reason / Review Note</th><th>Status</th><th></th></tr></thead>
         <tbody>{(leaves || []).map((l) => (
           <tr key={l.id}><td>{l.from_date} → {l.to_date}</td><td>{l.type}</td>
-            <td className="max-w-xs truncate text-xs">{l.reason}</td>
-            <td><Badge color={l.status === "approved" ? "green" : l.status === "rejected" ? "red" : "amber"}>{l.status}</Badge></td></tr>))}
+            <td className="max-w-xs text-xs"><div>{l.reason}</div>{l.review_note && <div className="mt-1 text-slate-500">Review note: {l.review_note}</div>}</td>
+            <td><Badge color={l.status === "approved" ? "green" : l.status === "rejected" ? "red" : "amber"}>{l.status}</Badge></td>
+            <td>{l.status === "pending" && <form action={deleteLeaveRequest}><input type="hidden" name="id" value={l.id} /><button className="btn-danger btn-sm">Delete</button></form>}</td></tr>))}
         </tbody>
       </table>
       {!leaves?.length && <EmptyState message="No leave requests." />}

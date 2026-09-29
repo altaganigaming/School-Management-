@@ -39,6 +39,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
           You do not have permission to access that module.
         </div>
       )}
+      {sp.leave_error === "note" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Add a note before rejecting a leave request.</div>}
       <PageHeader title="Dashboard" subtitle="Welcome to the school management panel." />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon="🎓" label="Students" value={students ?? 0} hint="Enrolled" />
@@ -68,9 +69,9 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
                     <td className="font-medium">{Array.isArray(l.profiles) ? l.profiles[0]?.full_name || "Name unavailable" : l.profiles?.full_name || "Name unavailable"}</td>
                     <td>{l.from_date} → {l.to_date}</td>
                     <td className="max-w-xs truncate">{l.reason}</td>
-                    <td><div className="flex gap-2">
-                      <form action={reviewLeaveRequest}><input type="hidden" name="id" value={l.id} /><input type="hidden" name="status" value="approved" /><button className="btn-primary btn-sm">Approve</button></form>
-                      <form action={reviewLeaveRequest}><input type="hidden" name="id" value={l.id} /><input type="hidden" name="status" value="rejected" /><button className="btn-danger btn-sm">Reject</button></form>
+                    <td><div className="flex min-w-64 flex-col gap-2">
+                      <form action={reviewLeaveRequest} className="flex gap-2"><input type="hidden" name="id" value={l.id} /><input type="hidden" name="status" value="approved" /><input name="review_note" className="input !py-1 text-xs" placeholder="Optional note" /><button className="btn-primary btn-sm">Approve</button></form>
+                      <form action={reviewLeaveRequest} className="flex gap-2"><input type="hidden" name="id" value={l.id} /><input type="hidden" name="status" value="rejected" /><input name="review_note" className="input !py-1 text-xs" placeholder="Reason required" required /><button className="btn-danger btn-sm">Reject</button></form>
                     </div></td>
                   </tr>
                 ))}

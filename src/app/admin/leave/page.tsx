@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
-import { reviewLeaveRequest, submitLeave } from "@/lib/actions/portal";
+import { deleteLeaveRequest, reviewLeaveRequest, submitLeave } from "@/lib/actions/portal";
 
 export const dynamic = "force-dynamic";
 
@@ -37,21 +37,28 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
               </div>
               <div className="mt-1 text-sm text-slate-500">{l.type} leave · {l.from_date} → {l.to_date}</div>
               <div className="text-xs text-slate-400">{l.reason}</div>
+              {l.review_note && <div className="mt-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">Review note: {l.review_note}</div>}
             </div>
             {me.role !== "teacher" && l.status === "pending" && (
               <div className="flex gap-2">
                 <form action={reviewLeaveRequest}>
                   <input type="hidden" name="id" value={l.id} />
                   <input type="hidden" name="status" value="approved" />
+                  <input name="review_note" className="input mb-2 text-xs" placeholder="Optional note" />
                   <button className="btn-primary btn-sm">Approve</button>
                 </form>
                 <form action={reviewLeaveRequest}>
                   <input type="hidden" name="id" value={l.id} />
                   <input type="hidden" name="status" value="rejected" />
+                  <input name="review_note" className="input mb-2 text-xs" placeholder="Reason required" required />
                   <button className="btn-danger btn-sm">Reject</button>
                 </form>
               </div>
             )}
+            {(me.role === "super_admin" || me.role === "staff" || (me.role === "teacher" && l.status === "pending")) && <form action={deleteLeaveRequest}>
+              <input type="hidden" name="id" value={l.id} />
+              <button className="btn-danger btn-sm">Delete</button>
+            </form>}
           </div>
         ))}
         {!leaves?.length && <EmptyState message="No leave requests." />}

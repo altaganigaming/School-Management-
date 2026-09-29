@@ -168,6 +168,7 @@ create table public.leave_requests (
   reason      text,
   status      text not null default 'pending' check (status in ('pending','approved','rejected')),
   reviewed_by uuid references public.profiles(id),
+  review_note text,
   created_at  timestamptz not null default now()
 );
 

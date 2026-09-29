@@ -49,7 +49,7 @@ export async function submitLeave(formData: FormData) {
   if (error) redirect(profile.role === "teacher" ? "/admin/leave?error=save" : "/portal/attendance?leave=error");
   const destination = profile.role === "teacher" ? "/admin/leave" : "/portal/attendance";
   revalidatePath(destination);
-  if (profile.role === "teacher") revalidatePath("/admin");
+  revalidatePath("/admin");
   redirect(`${destination}?submitted=1`);
 }
 
@@ -58,13 +58,37 @@ export async function reviewLeaveRequest(formData: FormData) {
   if (reviewer.role === "teacher") redirect("/admin");
   const status = String(formData.get("status") || "");
   const requestId = String(formData.get("id") || "");
+  const reviewNote = String(formData.get("review_note") || "").trim();
   if ((status !== "approved" && status !== "rejected") || !requestId) return;
+  if (status === "rejected" && !reviewNote) redirect("/admin?leave_error=note");
 
   const admin = createAdminClient();
-  const { error } = await admin.from("leave_requests").update({ status, reviewed_by: reviewer.id })
+  const { error } = await admin.from("leave_requests").update({ status, review_note: reviewNote || null, reviewed_by: reviewer.id })
     .eq("id", requestId)
     .eq("status", "pending");
   if (error) return;
   revalidatePath("/admin");
   revalidatePath("/admin/leave");
+}
+
+export async function deleteLeaveRequest(formData: FormData) {
+  const actor = await requireLogin();
+  const requestId = String(formData.get("id") || "");
+  if (!requestId) return;
+  const admin = createAdminClient();
+  const { data: request } = await admin.from("leave_requests").select("id, profile_id, status").eq("id", requestId).maybeSingle();
+  if (!request) return;
+
+  if (actor.role === "super_admin") {
+    await admin.from("leave_requests").delete().eq("id", requestId);
+  } else if ((actor.role === "teacher" || actor.role === "student") && request.profile_id === actor.id && request.status === "pending") {
+    await admin.from("leave_requests").delete().eq("id", requestId).eq("profile_id", actor.id).eq("status", "pending");
+  } else {
+    await requireAdmin("manage_leave");
+    await admin.from("leave_requests").delete().eq("id", requestId);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/leave");
+  revalidatePath("/portal/attendance");
 }
