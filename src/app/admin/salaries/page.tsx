@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel, monthOptions } from "@/lib/utils";
-import { addSalaryRecord, paySalary } from "@/lib/actions/fees";
+import { addSalaryRecord, deleteSalaryRecord, paySalary } from "@/lib/actions/fees";
 import { ensureTeacherRecords } from "@/lib/admin-records";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +22,8 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader title="Salaries" subtitle="Monthly salary records for faculty." />
-      {(sp.added || sp.paid) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Saved.</div>}
-      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">{sp.error === "duplicate" ? "This teacher already has a salary record for that month." : "Please check the teacher and amount."}</div>}
+      {(sp.added || sp.paid || sp.deleted) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">{sp.deleted ? "Salary record deleted." : "Saved."}</div>}
+      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">{sp.error === "duplicate" ? "This teacher already has a salary record for that month." : sp.error === "delete" ? "Salary record could not be deleted." : "Please check the teacher and amount."}</div>}
 
       <form action={addSalaryRecord} className="card mb-6 grid gap-4 sm:grid-cols-4">
         <h2 className="card-title sm:col-span-4">➕ Add Salary Record</h2>
@@ -58,6 +58,10 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     </form>
                   )}
                   {r.status === "paid" && <a href={`/admin/salaries/slip/${r.id}`} className="btn-secondary btn-sm">View Slip</a>}
+                  <form action={deleteSalaryRecord} className="mt-1">
+                    <input type="hidden" name="record_id" value={r.id} />
+                    <button className="btn-danger btn-sm">Delete</button>
+                  </form>
                 </td>
               </tr>
             ))}

@@ -18,8 +18,26 @@ async function addExam(formData: FormData) {
   revalidatePath("/admin/exams");
 }
 
+async function deleteExam(formData: FormData) {
+  "use server";
+  const { requireAdmin: require } = await import("@/lib/auth");
+  await require("manage_exams");
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const { error } = await admin.from("exams").delete().eq("id", String(formData.get("exam_id") || ""));
+  if (error) return;
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath("/admin/exams");
+  revalidatePath("/portal/exams");
+  revalidatePath("/portal");
+  const { redirect } = await import("next/navigation");
+  redirect("/admin/exams?deleted=exam");
+}
+
 async function addResult(formData: FormData) {
   "use server";
+  const { requireAdmin: require } = await import("@/lib/auth");
+  await require("manage_exams");
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const admin = createAdminClient();
   await admin.from("exam_results").upsert({
@@ -31,6 +49,25 @@ async function addResult(formData: FormData) {
   }, { onConflict: "exam_id,student_id,subject_id" });
   const { revalidatePath } = await import("next/cache");
   revalidatePath("/admin/exams");
+}
+
+async function deleteResult(formData: FormData) {
+  "use server";
+  const { requireAdmin: require } = await import("@/lib/auth");
+  await require("manage_exams");
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const resultId = String(formData.get("result_id") || "");
+  const { data: result } = await admin.from("exam_results").select("exam_id").eq("id", resultId).maybeSingle();
+  if (!result) return;
+  const { error } = await admin.from("exam_results").delete().eq("id", resultId);
+  if (error) return;
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath("/admin/exams");
+  revalidatePath("/portal/exams");
+  revalidatePath("/portal");
+  const { redirect } = await import("next/navigation");
+  redirect(`/admin/exams?exam_id=${encodeURIComponent(result.exam_id)}&deleted=mark`);
 }
 
 export default async function ExamsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
@@ -52,6 +89,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHeader title="Exams & Results" subtitle="Create exams and enter marks per subject." />
+      {sp.deleted && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{sp.deleted === "exam" ? "Exam and results deleted." : "Mark deleted."}</div>}
       <form action={addExam} className="card mb-6 grid gap-4 sm:grid-cols-5">
         <label className="block"><span className="label">Exam Name</span><input name="name" className="input" placeholder="e.g. Term 1" required /></label>
         <label className="block"><span className="label">Class</span>
@@ -67,10 +105,16 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
         <h2 className="card-title mb-3">Exams</h2>
         <div className="flex flex-wrap gap-2">
           {(exams || []).map((e) => (
-            <a key={e.id} href={`/admin/exams?exam_id=${e.id}`}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold ring-1 ${e.id === examId ? "bg-primary-600 text-white ring-primary-600" : "bg-white text-slate-700 ring-slate-200 hover:ring-primary-300"}`}>
-              {e.name} · {e.classes?.name}-{e.classes?.section}
-            </a>
+            <div key={e.id} className="flex items-center gap-2 rounded-lg ring-1 ring-slate-200">
+              <a href={`/admin/exams?exam_id=${e.id}`}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold ${e.id === examId ? "bg-primary-600 text-white" : "bg-white text-slate-700 hover:ring-primary-300"}`}>
+                {e.name} · {e.classes?.name}-{e.classes?.section}
+              </a>
+              <form action={deleteExam} className="pr-2">
+                <input type="hidden" name="exam_id" value={e.id} />
+                <button className="btn-danger btn-sm">Delete</button>
+              </form>
+            </div>
           ))}
         </div>
         {!exams?.length && <EmptyState message="No exams created." />}
@@ -103,6 +147,10 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
                             <input name="max_marks" type="number" defaultValue={existing?.max_marks ?? 100} className="input !w-16 !px-2 !py-1" required />
                             <button className="btn-primary btn-sm">Save</button>
                           </form>
+                          {existing && <form action={deleteResult} className="mt-1">
+                            <input type="hidden" name="result_id" value={existing.id} />
+                            <button className="btn-danger btn-sm">Delete mark</button>
+                          </form>}
                         </details>
                       </td>
                     );

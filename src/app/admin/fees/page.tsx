@@ -4,7 +4,7 @@ import { hasPerm } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel, monthOptions } from "@/lib/utils";
-import { generateFeeMonths, markFeePending, recordManualPayment } from "@/lib/actions/fees";
+import { deleteFeeHistory, generateFeeMonths, markFeePending, recordManualPayment } from "@/lib/actions/fees";
 import { ensureStudentRecords } from "@/lib/admin-records";
 
 export const dynamic = "force-dynamic";
@@ -41,11 +41,12 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader title="Fee Ledger" subtitle="Monthly fee records for every student." />
-      {(sp.generated || sp.paid || sp.pending) && (
+      {(sp.generated || sp.paid || sp.pending || sp.deleted) && (
         <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">
-          {sp.generated ? "Fee months generated." : sp.pending ? "Fee marked as pending." : `Payment recorded${sp.receipt ? ` — Receipt ${sp.receipt}` : ""}.`}
+          {sp.generated ? "Fee months generated." : sp.pending ? "Fee marked as pending." : sp.deleted ? "Fee history deleted." : `Payment recorded${sp.receipt ? ` — Receipt ${sp.receipt}` : ""}.`}
         </div>
       )}
+      {sp.error === "delete" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Fee history could not be deleted.</div>}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <form action={markFeePending} className="card h-fit">
@@ -110,7 +111,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
           <h2 className="card-title mb-3">Ledger</h2>
           <div className="max-h-[600px] overflow-y-auto">
             <table className="table">
-              <thead><tr><th>Student</th><th>Month</th><th>Amount</th><th>Status</th></tr></thead>
+              <thead><tr><th>Student</th><th>Month</th><th>Amount</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {(records || []).map((r) => (
                   <tr key={r.id}>
@@ -118,6 +119,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
                     <td className="text-xs">{monthLabel(r.month)}</td>
                     <td className="text-xs">{formatCurrency(r.amount)}</td>
                     <td><Badge color={r.status === "paid" ? "green" : "amber"}>{r.status}</Badge></td>
+                    <td><form action={deleteFeeHistory}><input type="hidden" name="record_id" value={r.id} /><button className="btn-danger btn-sm">Delete history</button></form></td>
                   </tr>
                 ))}
               </tbody>

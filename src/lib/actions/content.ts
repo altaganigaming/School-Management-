@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getSettings, requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { removeStoredFile } from "@/lib/storage";
 
 type Table = "notices" | "documents" | "gallery" | "events" | "achievements";
 const PERM: Record<Table, string> = {
@@ -98,8 +99,15 @@ export async function addContent(table: Table, formData: FormData) {
 export async function deleteContent(table: Table, formData: FormData) {
   await requireAdmin(PERM[table]);
   const supabase = await createClient();
-  await supabase.from(table).delete().eq("id", String(formData.get("id")));
+  const id = String(formData.get("id") || "");
+  if (table === "documents") {
+    const { data: document } = await supabase.from("documents").select("file_url").eq("id", id).maybeSingle();
+    if (document?.file_url && !(await removeStoredFile(document.file_url))) redirect("/admin/documents?error=delete");
+  }
+  const { error } = await supabase.from(table).delete().eq("id", id);
+  if (error) redirect(`/admin/${table}?error=delete`);
   revalidatePath(`/admin/${table}`);
+  if (table === "documents") revalidatePath("/downloads");
 }
 
 export async function deleteGalleryPhoto(formData: FormData) {

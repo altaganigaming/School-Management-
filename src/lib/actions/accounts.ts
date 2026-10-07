@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { usernameToEmail } from "@/lib/utils";
 import type { Role } from "@/lib/permissions";
+import { removeStoredFile } from "@/lib/storage";
 
 async function assertCanManage(targetRole: Role, permission: string) {
   const me = await requireAdmin(permission);
@@ -113,6 +114,31 @@ export async function updateProfileRecord(formData: FormData) {
   const userId = String(formData.get("user_id"));
   const table = role === "student" ? "students" : role === "teacher" ? "teachers" : null;
 
+  if (role === "teacher") {
+    const avatar = formData.get("avatar");
+    const shouldRemoveAvatar = formData.get("remove_avatar") === "true";
+    if (avatar instanceof File && avatar.size > 0) {
+      if (!avatar.type.startsWith("image/") || avatar.size > 5 * 1024 * 1024) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=avatar`);
+      const extension = avatar.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "jpg";
+      const path = `faculty/${userId}/${Date.now()}.${extension}`;
+      const { error: uploadError } = await admin.storage.from("avatars").upload(path, avatar, { contentType: avatar.type });
+      if (uploadError) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=avatar`);
+      const avatarUrl = admin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      const { data: currentProfile } = await admin.from("profiles").select("avatar_url").eq("id", userId).maybeSingle();
+      const { error: profileError } = await admin.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
+      if (profileError) {
+        await admin.storage.from("avatars").remove([path]);
+        redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=avatar`);
+      }
+      if (currentProfile?.avatar_url) await removeStoredFile(currentProfile.avatar_url);
+    } else if (shouldRemoveAvatar) {
+      const { data: currentProfile } = await admin.from("profiles").select("avatar_url").eq("id", userId).maybeSingle();
+      const { error: profileError } = await admin.from("profiles").update({ avatar_url: null }).eq("id", userId);
+      if (profileError) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=avatar`);
+      if (currentProfile?.avatar_url && !(await removeStoredFile(currentProfile.avatar_url))) redirect(`/admin/teachers?teacher_id=${encodeURIComponent(userId)}&error=avatar`);
+    }
+  }
+
   const profileChanges: Record<string, string> = {};
   const fullName = String(formData.get("full_name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
@@ -203,6 +229,8 @@ export async function deleteAccount(formData: FormData) {
   await requireSuperAdmin(); // only Principal can permanently delete
   const admin = createAdminClient();
   const userId = String(formData.get("user_id"));
+  const { data: profile } = await admin.from("profiles").select("avatar_url").eq("id", userId).maybeSingle();
+  if (profile?.avatar_url) await removeStoredFile(profile.avatar_url);
   await admin.auth.admin.deleteUser(userId);
   revalidatePath("/admin/users");
   redirect("/admin/users?deleted=1");
@@ -223,6 +251,14 @@ export async function saveSettings(formData: FormData) {
       ? (formData.getAll(`value:${key}`).includes("true") ? "true" : "false")
       : String(formData.get(`value:${key}`) || "");
     const media = formData.get(`file:${key}`) as File | null;
+    const removeMedia = formData.getAll(`remove:${key}`).includes("true");
+    const { data: currentSetting } = await supabase.from("school_settings").select("value").eq("key", key).maybeSingle();
+    const previousUrl = typeof currentSetting?.value === "string" ? currentSetting.value : null;
+    if (removeMedia) {
+      await supabase.from("school_settings").upsert({ key, value: "" });
+      if (previousUrl) await removeStoredFile(previousUrl);
+      continue;
+    }
     if (media && media.size > 0) {
       const admin = createAdminClient();
       const path = `website/${key}-${Date.now()}-${media.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
@@ -230,6 +266,7 @@ export async function saveSettings(formData: FormData) {
       if (!upload.error) {
         const url = admin.storage.from("gallery").getPublicUrl(path).data.publicUrl;
         await supabase.from("school_settings").upsert({ key, value: url });
+        if (previousUrl && previousUrl !== url) await removeStoredFile(previousUrl);
         continue;
       }
     }
@@ -246,6 +283,7 @@ export async function saveSettings(formData: FormData) {
       try { value = JSON.parse(raw); } catch { value = raw; }
     }
     await supabase.from("school_settings").upsert({ key, value });
+    if (["logo_url", "hero_image", "favicon_url"].includes(key) && previousUrl && previousUrl !== raw) await removeStoredFile(previousUrl);
   }
   revalidatePath("/", "layout");
   redirect("/admin/settings?saved=1");

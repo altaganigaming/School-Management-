@@ -2,24 +2,27 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { deleteLeaveRequest, reviewLeaveRequest, submitLeave } from "@/lib/actions/portal";
+import { hasPerm } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeavePage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const me = await requireAdmin();
-  if (me.role !== "teacher") await requireAdmin("manage_leave");
+  const canManageLeaves = me.role !== "teacher" && (me.role !== "staff" || hasPerm(me.role, me.permissions, "manage_leave"));
+  if (me.role !== "teacher" && me.role !== "staff") await requireAdmin("manage_leave");
+  else if (me.role === "staff" && canManageLeaves) await requireAdmin("manage_leave");
   const sp = await searchParams;
   const admin = createAdminClient();
   let leavesQuery = admin.from("leave_requests").select("*, profiles(full_name, role)").order("created_at", { ascending: false });
-  if (me.role === "teacher") leavesQuery = leavesQuery.eq("profile_id", me.id);
+  if (!canManageLeaves) leavesQuery = leavesQuery.eq("profile_id", me.id);
   const { data: leaves } = await leavesQuery;
 
   return (
     <>
-      <PageHeader title={me.role === "teacher" ? "My Leave Requests" : "Leave Requests"} subtitle={me.role === "teacher" ? "Submit a leave request and track its status." : "Review leave applications from staff, teachers and students."} />
+      <PageHeader title={canManageLeaves ? "Leave Requests" : "My Leave Requests"} subtitle={canManageLeaves ? "Review leave applications from staff, teachers and students." : "Submit a leave request and track its status."} />
       {sp.submitted && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Leave request submitted.</div>}
       {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "invalid" ? "Enter a valid date range and reason." : "Leave request could not be submitted."}</div>}
-      {me.role === "teacher" && <form action={submitLeave} className="card mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {(me.role === "teacher" || me.role === "staff") && <form action={submitLeave} className="card mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block"><span className="label">Leave Type</span><select name="type" className="input"><option value="casual">Casual</option><option value="sick">Sick</option><option value="other">Other</option></select></label>
         <label className="block"><span className="label">From</span><input name="from_date" type="date" className="input" required /></label>
         <label className="block"><span className="label">To</span><input name="to_date" type="date" className="input" required /></label>
@@ -39,7 +42,7 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
               <div className="text-xs text-slate-400">{l.reason}</div>
               {l.review_note && <div className="mt-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">Review note: {l.review_note}</div>}
             </div>
-            {me.role !== "teacher" && l.status === "pending" && (
+            {canManageLeaves && l.status === "pending" && (
               <div className="flex gap-2">
                 <form action={reviewLeaveRequest}>
                   <input type="hidden" name="id" value={l.id} />
@@ -55,7 +58,7 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
                 </form>
               </div>
             )}
-            {(me.role === "super_admin" || me.role === "staff" || (me.role === "teacher" && l.status === "pending")) && <form action={deleteLeaveRequest}>
+            {(canManageLeaves || (l.profile_id === me.id && l.status === "pending")) && <form action={deleteLeaveRequest}>
               <input type="hidden" name="id" value={l.id} />
               <button className="btn-danger btn-sm">Delete</button>
             </form>}

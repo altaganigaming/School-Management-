@@ -2,41 +2,53 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { downloadUrl } from "@/lib/utils";
-import { uploadFile } from "@/lib/auth";
+import { removeStoredFile } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
 async function addMaterial(formData: FormData) {
   "use server";
-  const { createClient: cc } = await import("@/lib/supabase/server");
-  const supabase = await cc();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { requireAdmin: require } = await import("@/lib/auth");
+  const profile = await require("manage_materials");
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
   let fileUrl = null;
   const file = formData.get("file") as File;
   if (file && file.size > 0) {
-    const path = `${Date.now()}-${file.name}`;
-    await supabase.storage.from("documents").upload(path, file);
-    fileUrl = supabase.storage.from("documents").getPublicUrl(path).data.publicUrl;
+    const path = `materials/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+    const { error } = await admin.storage.from("documents").upload(path, file);
+    if (error) return;
+    fileUrl = admin.storage.from("documents").getPublicUrl(path).data.publicUrl;
   }
-  await supabase.from("study_materials").insert({
+  const { error } = await admin.from("study_materials").insert({
     class_id: String(formData.get("class_id")) || null,
     subject_id: String(formData.get("subject_id")) || null,
     title: String(formData.get("title")),
     description: String(formData.get("description")),
     file_url: fileUrl,
-    created_by: user?.id,
+    created_by: profile.id,
   });
+  if (error && fileUrl) await removeStoredFile(fileUrl);
+  if (error) return;
   const { revalidatePath } = await import("next/cache");
   revalidatePath("/admin/materials");
+  revalidatePath("/portal/materials");
 }
 
 async function deleteMaterial(formData: FormData) {
   "use server";
-  const { createClient: cc } = await import("@/lib/supabase/server");
-  const supabase = await cc();
-  await supabase.from("study_materials").delete().eq("id", String(formData.get("id")));
+  const { requireAdmin: require } = await import("@/lib/auth");
+  await require("manage_materials");
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const id = String(formData.get("id") || "");
+  const { data: material } = await admin.from("study_materials").select("file_url").eq("id", id).maybeSingle();
+  if (material?.file_url && !(await removeStoredFile(material.file_url))) return;
+  const { error } = await admin.from("study_materials").delete().eq("id", id);
+  if (error) return;
   const { revalidatePath } = await import("next/cache");
   revalidatePath("/admin/materials");
+  revalidatePath("/portal/materials");
 }
 
 export default async function MaterialsPage() {

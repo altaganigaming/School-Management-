@@ -31,13 +31,14 @@ export async function submitPaymentProof(formData: FormData) {
 
 export async function submitLeave(formData: FormData) {
   const profile = await requireLogin();
-  if (profile.role !== "teacher" && profile.role !== "student") redirect("/admin");
+  if (profile.role !== "teacher" && profile.role !== "student" && profile.role !== "staff") redirect("/admin");
   const fromDate = String(formData.get("from_date") || "");
   const toDate = String(formData.get("to_date") || "");
   const reason = String(formData.get("reason") || "").trim();
   const type = String(formData.get("type") || "casual");
+  const destination = profile.role === "student" ? "/portal/attendance" : "/admin/leave";
   if (!isValidDate(fromDate) || !isValidDate(toDate) || fromDate > toDate || !reason
-    || !["casual", "sick", "other"].includes(type)) redirect(profile.role === "teacher" ? "/admin/leave?error=invalid" : "/portal/attendance?leave=error");
+    || !["casual", "sick", "other"].includes(type)) redirect(`${destination}?error=invalid`);
   const supabase = await createClient();
   const { error } = await supabase.from("leave_requests").insert({
     profile_id: profile.id,
@@ -46,8 +47,7 @@ export async function submitLeave(formData: FormData) {
     to_date: toDate,
     reason,
   });
-  if (error) redirect(profile.role === "teacher" ? "/admin/leave?error=save" : "/portal/attendance?leave=error");
-  const destination = profile.role === "teacher" ? "/admin/leave" : "/portal/attendance";
+  if (error) redirect(`${destination}?error=save`);
   revalidatePath(destination);
   revalidatePath("/admin");
   redirect(`${destination}?submitted=1`);
@@ -81,7 +81,7 @@ export async function deleteLeaveRequest(formData: FormData) {
 
   if (actor.role === "super_admin") {
     await admin.from("leave_requests").delete().eq("id", requestId);
-  } else if ((actor.role === "teacher" || actor.role === "student") && request.profile_id === actor.id && request.status === "pending") {
+  } else if ((actor.role === "teacher" || actor.role === "student" || actor.role === "staff") && request.profile_id === actor.id && request.status === "pending") {
     await admin.from("leave_requests").delete().eq("id", requestId).eq("profile_id", actor.id).eq("status", "pending");
   } else {
     await requireAdmin("manage_leave");

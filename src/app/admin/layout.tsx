@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const modules = ADMIN_MODULES.filter(
     (m) => !m.superOnly || profile.role === "super_admin"
   ).filter((m) => profile.role !== "teacher" || !["/admin/fees", "/admin/reports"].includes(m.href))
-    .filter((m) => (profile.role === "teacher" && ["/admin/attendance", "/admin/leave"].includes(m.href)) || !m.perm || hasPerm(profile.role, profile.permissions, m.perm));
+    .filter((m) => (profile.role === "teacher" && ["/admin/attendance", "/admin/leave"].includes(m.href)) || (profile.role === "staff" && m.href === "/admin/leave") || !m.perm || hasPerm(profile.role, profile.permissions, m.perm));
 
   return (
     <div className="flex min-h-screen">

@@ -19,7 +19,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
   return (<>
     <PageHeader title="Attendance" subtitle={rate !== null ? `Overall: ${rate}% present` : "No records yet"} />
-    {sp.leave && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Leave request submitted.</div>}
+    {(sp.submitted || sp.leave) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Leave request submitted.</div>}
+    {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">{sp.error === "invalid" ? "Enter a valid date range and reason." : "Leave request could not be submitted."}</div>}
 
     <form action={submitLeave} className="card mb-6 grid gap-4 sm:grid-cols-4">
       <h2 className="card-title sm:col-span-4">🌴 Apply for Leave</h2>

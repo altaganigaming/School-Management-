@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge } from "@/components/ui";
 import { updateProfileRecord } from "@/lib/actions/accounts";
 import { ensureTeacherRecords } from "@/lib/admin-records";
+import { PhotoViewer } from "@/components/photo-viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -12,13 +13,13 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
   const admin = createAdminClient();
   await ensureTeacherRecords();
   const { data: teachers } = await admin.from("teachers")
-    .select("*, profiles(full_name, username, phone, is_active), subjects(name)")
+    .select("*, profiles(full_name, username, phone, is_active, avatar_url), subjects(name)")
     .order("employee_id");
   const { data: subjects } = await admin.from("subjects").select("*").order("name");
   const { data: classes } = await admin.from("classes").select("id, name, section").order("name");
   const subjectNames = new Map((subjects || []).map((subject) => [subject.id, subject.name]));
   const selectedTeacher = (teachers || []).find((teacher) => teacher.profile_id === sp.teacher_id);
-  const teacherProfile = (teacher: { profiles?: { full_name?: string; username?: string; phone?: string; is_active?: boolean } | Array<{ full_name?: string; username?: string; phone?: string; is_active?: boolean }> | null }) =>
+  const teacherProfile = (teacher: { profiles?: { full_name?: string; username?: string; phone?: string; is_active?: boolean; avatar_url?: string | null } | Array<{ full_name?: string; username?: string; phone?: string; is_active?: boolean; avatar_url?: string | null }> | null }) =>
     Array.isArray(teacher.profiles) ? teacher.profiles[0] : teacher.profiles;
   const teacherSubjectNames = (teacher: { assigned_subjects?: unknown; subject_id?: string | null; subjects?: { name?: string } | null }) => {
     const assigned = Array.isArray(teacher.assigned_subjects) ? teacher.assigned_subjects.map(String) : teacher.subject_id ? [teacher.subject_id] : [];
@@ -32,7 +33,7 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
         <a href="/admin/users" className="btn-primary">➕ Create Teacher Account</a>
       } />
       {sp.updated && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Teacher details updated.</div>}
-      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "classes" ? "One or more selected classes no longer exist. Reload and choose valid classes." : "Teacher details could not be saved."}</div>}
+      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "classes" ? "One or more selected classes no longer exist. Reload and choose valid classes." : sp.error === "avatar" ? "Faculty image must be an image under 5 MB and upload successfully." : "Teacher details could not be saved."}</div>}
       <div className="card overflow-x-auto">
         <table className="table">
           <thead><tr><th>Emp. ID</th><th>Name</th><th>Subject</th><th>Qualification</th><th>Joining</th><th>Contact</th><th>Status</th></tr></thead>
@@ -63,12 +64,18 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
       </form>
       {selectedTeacher && <div className="card mt-6">
         <h2 className="card-title">✏️ Edit Teacher Details</h2>
-        <form action={updateProfileRecord} className="mt-4 grid gap-4 sm:grid-cols-3">
+        <form action={updateProfileRecord} encType="multipart/form-data" className="mt-4 grid gap-4 sm:grid-cols-3">
           <input type="hidden" name="role" value="teacher" />
           <input type="hidden" name="user_id" value={selectedTeacher.profile_id} />
           <label className="block"><span className="label">Employee ID</span><input name="employee_id" className="input" defaultValue={selectedTeacher.employee_id} required /></label>
           <label className="block"><span className="label">Full Name</span><input name="full_name" className="input" defaultValue={teacherProfile(selectedTeacher)?.full_name || ""} required /></label>
           <label className="block"><span className="label">Phone</span><input name="phone" className="input" defaultValue={teacherProfile(selectedTeacher)?.phone || ""} /></label>
+          <div className="block"><span className="label">Faculty Photo</span>
+            <input name="avatar" type="file" accept="image/*" className="input" />
+            <p className="mt-1 text-xs text-slate-400">Upload an image up to 5 MB for the homepage faculty section.</p>
+            {teacherProfile(selectedTeacher)?.avatar_url && <label className="mt-2 flex items-center gap-2 text-xs text-red-600"><input type="checkbox" name="remove_avatar" value="true" className="h-4 w-4" />Remove current photo</label>}
+          </div>
+          {teacherProfile(selectedTeacher)?.avatar_url && <PhotoViewer src={teacherProfile(selectedTeacher)!.avatar_url!} alt={teacherProfile(selectedTeacher)?.full_name || "Faculty member"} className="h-20 w-20 rounded-full" imageClassName="h-full w-full rounded-full object-cover" />}
           <label className="block"><span className="label">Qualification</span><input name="qualification" className="input" defaultValue={selectedTeacher.qualification || ""} /></label>
           <label className="block"><span className="label">Subjects</span>
             <input type="hidden" name="assigned_subjects" value="" />

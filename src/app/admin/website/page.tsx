@@ -53,6 +53,7 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
                 <input type="file" name={`file:${key}`} accept={key === "favicon_url" ? "image/png,image/x-icon,image/svg+xml" : "image/*"} className="input" />
                 <input name={`value:${key}`} className="input mt-2" placeholder="Or paste image URL" defaultValue={s[key] ?? ""} />
                 <input type="hidden" name="key" value={key} />
+                {s[key] && <label className="mt-2 flex items-center gap-2 text-xs text-red-600"><input type="checkbox" name={`remove:${key}`} value="true" className="h-4 w-4" />Remove current image</label>}
               </label>
             ))}
           </div>

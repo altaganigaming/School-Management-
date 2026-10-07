@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
 import { formatCurrency, monthLabel } from "@/lib/utils";
-import { approvePaymentProof, rejectPaymentProof } from "@/lib/actions/fees";
+import { approvePaymentProof, deletePaymentProof, rejectPaymentProof } from "@/lib/actions/fees";
 import { PhotoViewer } from "@/components/photo-viewer";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,8 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
           {sp.approved ? `Payment approved${sp.receipt ? ` — Receipt ${sp.receipt} generated` : ""}.` : "Payment rejected."}
         </div>
       )}
+      {sp.deleted && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Payment history deleted.</div>}
+      {sp.error === "delete" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">Payment history could not be deleted.</div>}
 
       <div className="space-y-4">
         {(proofs || []).map((p) => (
@@ -60,6 +62,10 @@ export default async function PaymentProofsPage({ searchParams }: { searchParams
                     </form>
                   </div>
                 )}
+                <form action={deletePaymentProof}>
+                  <input type="hidden" name="proof_id" value={p.id} />
+                  <button className="btn-danger btn-sm">Delete history</button>
+                </form>
               </div>
             </div>
           </div>

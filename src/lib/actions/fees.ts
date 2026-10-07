@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { removeStoredFile } from "@/lib/storage";
 
 /** Generate fee ledger rows for a student for a range of months. */
 export async function generateFeeMonths(formData: FormData) {
@@ -122,6 +123,56 @@ export async function rejectPaymentProof(formData: FormData) {
   redirect("/admin/payment-proofs?rejected=1");
 }
 
+export async function deletePaymentProof(formData: FormData) {
+  await requireAdmin("verify_payments");
+  const admin = createAdminClient();
+  const proofId = String(formData.get("proof_id") || "");
+  const { data: proof } = await admin.from("payment_proofs").select("*").eq("id", proofId).maybeSingle();
+  if (!proof) return;
+  if (proof.proof_url && !(await removeStoredFile(proof.proof_url))) redirect("/admin/payment-proofs?error=delete");
+  if (proof.receipt_id) await admin.from("receipts").delete().eq("id", proof.receipt_id);
+  const { error } = await admin.from("payment_proofs").delete().eq("id", proofId);
+  if (error) redirect("/admin/payment-proofs?error=delete");
+  const { count } = await admin.from("receipts").select("id", { count: "exact", head: true })
+    .eq("student_id", proof.student_id).eq("month", proof.month);
+  if (!count) await admin.from("fee_records").update({ status: "pending", paid_at: null })
+    .eq("student_id", proof.student_id).eq("month", proof.month);
+  revalidatePath("/admin/payment-proofs");
+  revalidatePath("/admin/fees");
+  revalidatePath("/portal/fees");
+  redirect("/admin/payment-proofs?deleted=1");
+}
+
+export async function deleteFeeHistory(formData: FormData) {
+  await requireAdmin("manage_fees");
+  const admin = createAdminClient();
+  const recordId = String(formData.get("record_id") || "");
+  const { data: record } = await admin.from("fee_records").select("student_id, month").eq("id", recordId).maybeSingle();
+  if (!record) return;
+  const [{ data: proofs }, { data: receipts }] = await Promise.all([
+    admin.from("payment_proofs").select("id, proof_url").eq("student_id", record.student_id).eq("month", record.month),
+    admin.from("receipts").select("id").eq("student_id", record.student_id).eq("month", record.month),
+  ]);
+  for (const proof of proofs || []) {
+    if (proof.proof_url && !(await removeStoredFile(proof.proof_url))) redirect("/admin/fees?error=delete");
+  }
+  if (proofs?.length) {
+    const { error } = await admin.from("payment_proofs").delete().in("id", proofs.map((proof) => proof.id));
+    if (error) redirect("/admin/fees?error=delete");
+  }
+  if (receipts?.length) {
+    const { error } = await admin.from("receipts").delete().in("id", receipts.map((receipt) => receipt.id));
+    if (error) redirect("/admin/fees?error=delete");
+  }
+  const { error } = await admin.from("fee_records").delete().eq("id", recordId);
+  if (error) redirect("/admin/fees?error=delete");
+  revalidatePath("/admin/fees");
+  revalidatePath("/admin/payment-proofs");
+  revalidatePath("/portal/fees");
+  revalidatePath("/portal");
+  redirect("/admin/fees?deleted=1");
+}
+
 async function nextReceiptNo(admin: any): Promise<string> {
   const { count } = await admin.from("receipts").select("*", { count: "exact", head: true });
   return `RCP-${new Date().getFullYear()}-${String((count ?? 0) + 1).padStart(5, "0")}`;
@@ -154,4 +205,13 @@ export async function paySalary(formData: FormData) {
   }).eq("id", String(formData.get("record_id")));
   revalidatePath("/admin/salaries");
   redirect("/admin/salaries?paid=1");
+}
+
+export async function deleteSalaryRecord(formData: FormData) {
+  await requireAdmin("manage_salaries");
+  const admin = createAdminClient();
+  const { error } = await admin.from("salary_records").delete().eq("id", String(formData.get("record_id") || ""));
+  if (error) redirect("/admin/salaries?error=delete");
+  revalidatePath("/admin/salaries");
+  redirect("/admin/salaries?deleted=1");
 }
