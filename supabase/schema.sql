@@ -414,18 +414,6 @@ begin
     select full_name, role into requester_name, requester_role from public.profiles where id = new.profile_id;
     insert into public.leave_request_history (leave_request_id, requester_id, requester_name, requester_role, from_date, to_date, reason, event, previous_status, status, changed_by, changed_by_name)
     values (new.id, new.profile_id, requester_name, requester_role, new.from_date, new.to_date, new.reason, 'submitted', null, new.status, new.profile_id, requester_name);
-  elsif tg_op = 'DELETE' then
-    select h.requester_name, h.requester_role into requester_name, requester_role
-    from public.leave_request_history h where h.leave_request_id = old.id
-    order by h.created_at desc limit 1;
-    if requester_name is null then
-      select full_name, role into requester_name, requester_role from public.profiles where id = old.profile_id;
-    end if;
-    actor_id := auth.uid();
-    select full_name into actor_name from public.profiles where id = actor_id;
-    insert into public.leave_request_history (leave_request_id, requester_id, requester_name, requester_role, from_date, to_date, reason, event, previous_status, status, review_note, changed_by, changed_by_name)
-    values (old.id, old.profile_id, coalesce(requester_name, 'Deleted account'), coalesce(requester_role, 'student'), old.from_date, old.to_date, old.reason, 'deleted', old.status, old.status, old.review_note, actor_id, actor_name);
-    return old;
   elsif new.status is distinct from old.status then
     select full_name, role into requester_name, requester_role from public.profiles where id = new.profile_id;
     actor_id := coalesce(new.reviewed_by, auth.uid());
@@ -444,7 +432,7 @@ create trigger protect_own_profile_fields
 
 drop trigger if exists record_leave_request_status on public.leave_requests;
 create trigger record_leave_request_status
-  after insert or update or delete on public.leave_requests
+  after insert or update on public.leave_requests
   for each row execute function public.record_leave_request_status();
 
 create or replace function public.hard_delete_leave_request(p_request_id uuid)
@@ -471,6 +459,7 @@ end;
 $$;
 revoke all on function public.hard_delete_leave_request(uuid) from public, anon;
 grant execute on function public.hard_delete_leave_request(uuid) to authenticated;
+revoke delete on public.leave_requests from authenticated;
 
 -- ============================================================
 -- ROW LEVEL SECURITY

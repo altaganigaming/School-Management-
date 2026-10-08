@@ -40,7 +40,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
         </div>
       )}
       {sp.leave_error === "note" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Add a note before rejecting a leave request.</div>}
-      <PageHeader title="Dashboard" subtitle="Welcome to the school management panel." />
+      <PageHeader title="Dashboard" subtitle="Welcome to the school management panel."
+        actions={profile.role === "super_admin" ? <Link href="/admin/records" className="btn-primary">Download Records PDF</Link> : undefined} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon="🎓" label="Students" value={students ?? 0} hint="Enrolled" />
         <StatCard icon="👩‍🏫" label="Teachers" value={teachers ?? 0} />

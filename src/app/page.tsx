@@ -71,36 +71,7 @@ export default async function HomePage() {
                 <p className="mt-1 text-lg font-semibold text-white">{gallery[0]?.title || "A place to learn and grow"}</p>
               </div>
             </div>
-            <div className="absolute bottom-0 left-0 z-10 w-[76%] rounded-2xl border border-white/60 bg-white p-5 text-slate-800 shadow-2xl shadow-black/25 sm:bottom-3 sm:left-2 sm:w-[65%]">
-              <p className="text-xs font-semibold uppercase text-primary-700">Visit or call</p>
-              <p className="mt-2 font-display text-xl font-bold">{s.school_name}</p>
-              <p className="mt-1 text-sm text-slate-600">{contact.phone || contact.address || "Contact the school office for details."}</p>
-            </div>
             <div className="absolute -right-1 bottom-[27%] z-10 hidden rounded-xl bg-accent-500 px-4 py-3 text-sm font-semibold text-white shadow-lg sm:block">Learning with purpose</div>
-          </div>
-        </div>
-      </section>
-
-      {/* ABOUT / VISION / MISSION */}
-      <section id="about" className="relative isolate overflow-hidden py-20 sm:py-28">
-        <div className="absolute inset-y-10 left-0 -z-10 w-[72%] rounded-r-[4rem] bg-primary-50/80" />
-        <div className="page-wrap grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
-          <div className="home-reveal max-w-2xl">
-            <p className="mb-3 text-xs font-bold uppercase text-primary-700">Our school</p>
-            <h2 className="section-title">About Us</h2>
-            <p className="mt-6 text-lg leading-relaxed text-slate-700">{s.about}</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <article className="home-lift rounded-2xl border border-white bg-white/90 p-6 shadow-xl shadow-primary-900/5 ring-1 ring-primary-100 sm:translate-x-4">
-              <span className="text-xs font-bold uppercase text-primary-700">01 · Our Vision</span>
-              <h3 className="mt-2 font-display text-2xl font-bold text-slate-900">A direction for every learner</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">{s.vision}</p>
-            </article>
-            <article className="home-lift rounded-2xl border border-white bg-white/95 p-6 shadow-xl shadow-accent-900/5 ring-1 ring-accent-100 sm:-translate-x-3">
-              <span className="text-xs font-bold uppercase text-accent-600">02 · Our Mission</span>
-              <h3 className="mt-2 font-display text-2xl font-bold text-slate-900">Learning with purpose</h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">{s.mission}</p>
-            </article>
           </div>
         </div>
       </section>
@@ -276,9 +247,30 @@ export default async function HomePage() {
           <div className="home-reveal rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-md sm:p-8">
             <h3 className="font-display text-2xl font-bold">How to Apply</h3>
             <p className="mt-4 leading-relaxed text-white/80">{s.admission_info}</p>
-            <div className="mt-6 rounded-xl border border-white/15 bg-slate-950/20 p-4 text-sm text-white/90">
-              Contact the school office at <b>{contact.phone || "the number listed in Contact Us"}</b> for enquiries.
-            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ABOUT / VISION / MISSION */}
+      <section id="about" className="relative isolate overflow-hidden py-20 sm:py-28">
+        <div className="absolute inset-y-10 left-0 -z-10 w-[72%] rounded-r-[4rem] bg-primary-50/80" />
+        <div className="page-wrap grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+          <div className="home-reveal max-w-2xl">
+            <p className="mb-3 text-xs font-bold uppercase text-primary-700">Our school</p>
+            <h2 className="section-title">About Us</h2>
+            <p className="mt-6 text-lg leading-relaxed text-slate-700">{s.about}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <article className="home-lift rounded-2xl border border-white bg-white/90 p-6 shadow-xl shadow-primary-900/5 ring-1 ring-primary-100 sm:translate-x-4">
+              <span className="text-xs font-bold uppercase text-primary-700">01 · Our Vision</span>
+              <h3 className="mt-2 font-display text-2xl font-bold text-slate-900">A direction for every learner</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{s.vision}</p>
+            </article>
+            <article className="home-lift rounded-2xl border border-white bg-white/95 p-6 shadow-xl shadow-accent-900/5 ring-1 ring-accent-100 sm:-translate-x-3">
+              <span className="text-xs font-bold uppercase text-accent-600">02 · Our Mission</span>
+              <h3 className="mt-2 font-display text-2xl font-bold text-slate-900">Learning with purpose</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{s.mission}</p>
+            </article>
           </div>
         </div>
       </section>
