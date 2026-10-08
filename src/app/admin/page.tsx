@@ -22,7 +22,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "staff"),
     supabase.from("payment_proofs").select("*", { count: "exact", head: true }).eq("status", "pending"),
     canReviewLeaves
-      ? createAdminClient().from("leave_requests").select("*, profiles(full_name)").eq("status", "pending").order("created_at", { ascending: false })
+      ? createAdminClient().from("leave_requests").select("*, profiles!leave_requests_profile_id_fkey(full_name, role)").eq("status", "pending").order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
   ]);
 

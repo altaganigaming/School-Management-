@@ -12,7 +12,9 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
   if (canManageLeaves) await requireAdmin("manage_leave");
   const sp = await searchParams;
   const admin = createAdminClient();
-  let leavesQuery = admin.from("leave_requests").select("*, profiles(full_name, role)").order("created_at", { ascending: false });
+  let leavesQuery = admin.from("leave_requests")
+    .select("*, profiles!leave_requests_profile_id_fkey(full_name, role)")
+    .order("created_at", { ascending: false });
   if (!canManageLeaves) leavesQuery = leavesQuery.eq("profile_id", me.id);
   const { data: leaveRows, error: leavesError } = await leavesQuery;
   const { data: historyRows } = leaveRows?.length
