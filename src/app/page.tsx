@@ -15,7 +15,7 @@ export default async function HomePage() {
     supabase.from("notices").select("*").eq("is_published", true).order("published_at", { ascending: false }).limit(5),
     supabase.from("events").select("*").order("event_date", { ascending: false }).limit(3),
     listGalleryImages(6),
-    supabase.from("teachers").select("id, qualification, profiles(full_name, avatar_url), subjects(name)").order("employee_id").limit(12),
+    supabase.from("public_teacher_profiles").select("id, qualification, full_name, avatar_url, subject_name").order("full_name").limit(12),
     supabase.from("achievements").select("*").order("achieved_on", { ascending: false }).limit(4),
   ]);
   const facilities: string[] = s.facilities || [];
@@ -165,15 +165,15 @@ export default async function HomePage() {
           {(teachers || []).map((t) => (
             <article key={t.id} className="home-lift group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary-100 via-white to-accent-400/20" />
-              {t.profiles?.[0]?.avatar_url ? (
-                <PhotoViewer src={t.profiles[0].avatar_url} alt={t.profiles[0].full_name || "Faculty member"} className="relative mx-auto h-20 w-20 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
+              {t.avatar_url ? (
+                <PhotoViewer src={t.avatar_url} alt={t.full_name || "Faculty member"} className="relative mx-auto h-20 w-20 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
               ) : (
                 <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
-                  {(t.profiles?.[0]?.full_name || "T")[0]}
+                  {(t.full_name || "T")[0]}
                 </div>
               )}
-              <div className="mt-5 font-display text-lg font-bold text-slate-900">{t.profiles?.[0]?.full_name}</div>
-              <div className="mt-1 text-sm font-medium text-primary-700">{t.subjects?.[0]?.name || "Faculty"}</div>
+              <div className="mt-5 font-display text-lg font-bold text-slate-900">{t.full_name}</div>
+              <div className="mt-1 text-sm font-medium text-primary-700">{t.subject_name || "Faculty"}</div>
               <div className="mt-2 text-xs text-slate-500">{t.qualification}</div>
             </article>
           ))}

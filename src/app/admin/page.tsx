@@ -13,7 +13,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const profile = await requireAdmin();
   const supabase = await createClient();
-  const canReviewLeaves = profile.role !== "teacher" && hasPerm(profile.role, profile.permissions, "manage_leave");
+  const canReviewLeaves = hasPerm(profile.role, profile.permissions, "manage_leave");
   const canViewRevenue = profile.role !== "teacher" && hasPerm(profile.role, profile.permissions, "manage_fees");
 
   const [{ count: students }, { count: teachers }, { count: staff }, { count: pendingProofs }, { data: pendingLeaves }] = await Promise.all([

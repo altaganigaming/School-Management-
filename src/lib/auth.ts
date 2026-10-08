@@ -8,6 +8,7 @@ export interface Profile {
   full_name: string;
   role: Role;
   permissions: string[];
+  self_editable_fields?: string[];
   assigned_classes?: string[];
   avatar_url: string | null;
   phone: string | null;

@@ -139,11 +139,15 @@ export async function updateProfileRecord(formData: FormData) {
     }
   }
 
-  const profileChanges: Record<string, string> = {};
+  const profileChanges: Record<string, any> = {};
   const fullName = String(formData.get("full_name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
   if (fullName) profileChanges.full_name = fullName;
   if (phone) profileChanges.phone = phone;
+  if (formData.has("self_editable_fields_present")) {
+    profileChanges.self_editable_fields = [...new Set(formData.getAll("self_editable_fields").map(String)
+      .filter((field) => field === "full_name" || field === "phone"))];
+  }
   if (Object.keys(profileChanges).length) {
     const { error } = await admin.from("profiles").update(profileChanges).eq("id", userId);
     if (error) redirect(`/admin/${role === "student" ? "students" : "teachers"}?error=save`);

@@ -11,6 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     (m) => !m.superOnly || profile.role === "super_admin"
   ).filter((m) => profile.role !== "teacher" || !["/admin/fees", "/admin/reports"].includes(m.href))
     .filter((m) => (profile.role === "teacher" && ["/admin/attendance", "/admin/leave"].includes(m.href)) || (profile.role === "staff" && m.href === "/admin/leave") || !m.perm || hasPerm(profile.role, profile.permissions, m.perm));
+  if (profile.role === "teacher") modules.splice(1, 0, { href: "/admin/profile", label: "My Profile", icon: "👤", perm: null });
 
   return (
     <div className="flex min-h-screen">

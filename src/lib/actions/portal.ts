@@ -55,38 +55,34 @@ export async function submitLeave(formData: FormData) {
 
 export async function reviewLeaveRequest(formData: FormData) {
   const reviewer = await requireAdmin("manage_leave");
-  if (reviewer.role === "teacher") redirect("/admin");
   const status = String(formData.get("status") || "");
   const requestId = String(formData.get("id") || "");
   const reviewNote = String(formData.get("review_note") || "").trim();
   if ((status !== "approved" && status !== "rejected") || !requestId) return;
   if (status === "rejected" && !reviewNote) redirect("/admin?leave_error=note");
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("leave_requests").update({ status, review_note: reviewNote || null, reviewed_by: reviewer.id })
+  const supabase = await createClient();
+  const { error } = await supabase.from("leave_requests").update({
+    status,
+    review_note: reviewNote || null,
+    reviewed_by: reviewer.id,
+    reviewed_at: new Date().toISOString(),
+  })
     .eq("id", requestId)
     .eq("status", "pending");
-  if (error) return;
+  if (error) redirect("/admin/leave?error=save");
   revalidatePath("/admin");
   revalidatePath("/admin/leave");
+  revalidatePath("/portal/attendance");
 }
 
 export async function deleteLeaveRequest(formData: FormData) {
   const actor = await requireLogin();
   const requestId = String(formData.get("id") || "");
   if (!requestId) return;
-  const admin = createAdminClient();
-  const { data: request } = await admin.from("leave_requests").select("id, profile_id, status").eq("id", requestId).maybeSingle();
-  if (!request) return;
-
-  if (actor.role === "super_admin") {
-    await admin.from("leave_requests").delete().eq("id", requestId);
-  } else if ((actor.role === "teacher" || actor.role === "student" || actor.role === "staff") && request.profile_id === actor.id && request.status === "pending") {
-    await admin.from("leave_requests").delete().eq("id", requestId).eq("profile_id", actor.id).eq("status", "pending");
-  } else {
-    await requireAdmin("manage_leave");
-    await admin.from("leave_requests").delete().eq("id", requestId);
-  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("leave_requests").delete().eq("id", requestId);
+  if (error) redirect(actor.role === "student" ? "/portal/attendance?error=delete" : "/admin/leave?error=delete");
 
   revalidatePath("/admin");
   revalidatePath("/admin/leave");

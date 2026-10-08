@@ -8,18 +8,18 @@ import { PhotoViewer } from "@/components/photo-viewer";
 export const dynamic = "force-dynamic";
 
 export default async function TeachersPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  await requireAdmin("manage_faculty");
+  const me = await requireAdmin("manage_faculty");
   const sp = await searchParams;
   const admin = createAdminClient();
   await ensureTeacherRecords();
   const { data: teachers } = await admin.from("teachers")
-    .select("*, profiles(full_name, username, phone, is_active, avatar_url), subjects(name)")
+    .select("*, profiles(full_name, username, phone, is_active, avatar_url, self_editable_fields), subjects(name)")
     .order("employee_id");
   const { data: subjects } = await admin.from("subjects").select("*").order("name");
   const { data: classes } = await admin.from("classes").select("id, name, section").order("name");
   const subjectNames = new Map((subjects || []).map((subject) => [subject.id, subject.name]));
   const selectedTeacher = (teachers || []).find((teacher) => teacher.profile_id === sp.teacher_id);
-  const teacherProfile = (teacher: { profiles?: { full_name?: string; username?: string; phone?: string; is_active?: boolean; avatar_url?: string | null } | Array<{ full_name?: string; username?: string; phone?: string; is_active?: boolean; avatar_url?: string | null }> | null }) =>
+  const teacherProfile = (teacher: { profiles?: { full_name?: string; username?: string; phone?: string; is_active?: boolean; avatar_url?: string | null; self_editable_fields?: string[] } | Array<{ full_name?: string; username?: string; phone?: string; is_active?: boolean; avatar_url?: string | null; self_editable_fields?: string[] }> | null }) =>
     Array.isArray(teacher.profiles) ? teacher.profiles[0] : teacher.profiles;
   const teacherSubjectNames = (teacher: { assigned_subjects?: unknown; subject_id?: string | null; subjects?: { name?: string } | null }) => {
     const assigned = Array.isArray(teacher.assigned_subjects) ? teacher.assigned_subjects.map(String) : teacher.subject_id ? [teacher.subject_id] : [];
@@ -67,6 +67,7 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
         <form action={updateProfileRecord} encType="multipart/form-data" className="mt-4 grid gap-4 sm:grid-cols-3">
           <input type="hidden" name="role" value="teacher" />
           <input type="hidden" name="user_id" value={selectedTeacher.profile_id} />
+          {me.role === "super_admin" && <input type="hidden" name="self_editable_fields_present" value="1" />}
           <label className="block"><span className="label">Employee ID</span><input name="employee_id" className="input" defaultValue={selectedTeacher.employee_id} required /></label>
           <label className="block"><span className="label">Full Name</span><input name="full_name" className="input" defaultValue={teacherProfile(selectedTeacher)?.full_name || ""} required /></label>
           <label className="block"><span className="label">Phone</span><input name="phone" className="input" defaultValue={teacherProfile(selectedTeacher)?.phone || ""} /></label>
@@ -75,6 +76,14 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
             <p className="mt-1 text-xs text-slate-400">Upload an image up to 5 MB for the homepage faculty section.</p>
             {teacherProfile(selectedTeacher)?.avatar_url && <label className="mt-2 flex items-center gap-2 text-xs text-red-600"><input type="checkbox" name="remove_avatar" value="true" className="h-4 w-4" />Remove current photo</label>}
           </div>
+          {me.role === "super_admin" && <fieldset className="block rounded-lg border border-slate-200 p-3 sm:col-span-2">
+            <legend className="label px-1">Teacher may edit in their profile</legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              {[{ key: "full_name", label: "Full name" }, { key: "phone", label: "Phone" }].map((field) => (
+                <label key={field.key} className="flex items-center gap-2"><input type="checkbox" name="self_editable_fields" value={field.key} defaultChecked={teacherProfile(selectedTeacher)?.self_editable_fields?.includes(field.key) ?? field.key === "phone"} className="h-4 w-4" />{field.label}</label>
+              ))}
+            </div>
+          </fieldset>}
           {teacherProfile(selectedTeacher)?.avatar_url && <PhotoViewer src={teacherProfile(selectedTeacher)!.avatar_url!} alt={teacherProfile(selectedTeacher)?.full_name || "Faculty member"} className="h-20 w-20 rounded-full" imageClassName="h-full w-full rounded-full object-cover" />}
           <label className="block"><span className="label">Qualification</span><input name="qualification" className="input" defaultValue={selectedTeacher.qualification || ""} /></label>
           <label className="block"><span className="label">Subjects</span>
