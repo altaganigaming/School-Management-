@@ -258,6 +258,59 @@ export async function saveSettings(formData: FormData) {
     const removeMedia = formData.getAll(`remove:${key}`).includes("true");
     const { data: currentSetting } = await supabase.from("school_settings").select("value").eq("key", key).maybeSingle();
     const previousUrl = typeof currentSetting?.value === "string" ? currentSetting.value : null;
+    if (key === "facilities") {
+      const currentFacilities = Array.isArray(currentSetting?.value) ? currentSetting.value.map((facility: unknown) =>
+        typeof facility === "string"
+          ? { name: facility, image_url: null }
+          : { name: String((facility as { name?: unknown })?.name || ""), image_url: String((facility as { image_url?: unknown })?.image_url || "") || null }
+      ) : [];
+      const oldImageUrls = new Set(currentFacilities.map((facility: { image_url: string | null }) => facility.image_url).filter((url: string | null): url is string => Boolean(url)));
+      const names = formData.getAll("facility_name").map((value) => String(value).trim());
+      const priorImages = formData.getAll("facility_existing_image").map(String);
+      const files = formData.getAll("facility_image");
+      const updatedFacilities: { name: string; image_url: string | null }[] = [];
+      const newImageUrls: string[] = [];
+
+      for (let index = 0; index < names.length; index++) {
+        const name = names[index];
+        if (!name) continue;
+        if (name.length > 100) redirect("/admin/website?error=facility_image");
+        const priorImage = oldImageUrls.has(priorImages[index]) ? priorImages[index] : null;
+        const file = files[index];
+        const hasNewImage = file instanceof File && file.size > 0;
+        if (hasNewImage && (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024)) {
+          for (const url of newImageUrls) await removeStoredFile(url);
+          redirect("/admin/website?error=facility_image");
+        }
+
+        let imageUrl = priorImage;
+        if (formData.get(`facility_remove_image:${index}`) === "true" && !hasNewImage) imageUrl = null;
+        if (hasNewImage) {
+          const admin = createAdminClient();
+          const extension = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "jpg";
+          const path = `facilities/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await admin.storage.from("gallery").upload(path, file, { contentType: file.type });
+          if (uploadError) {
+            for (const url of newImageUrls) await removeStoredFile(url);
+            redirect("/admin/website?error=facility_image");
+          }
+          imageUrl = admin.storage.from("gallery").getPublicUrl(path).data.publicUrl;
+          newImageUrls.push(imageUrl);
+        }
+        updatedFacilities.push({ name, image_url: imageUrl });
+      }
+
+      const { error: saveError } = await supabase.from("school_settings").upsert({ key, value: updatedFacilities });
+      if (saveError) {
+        for (const url of newImageUrls) await removeStoredFile(url);
+        redirect("/admin/website?error=facility_image");
+      }
+      const keptImageUrls = new Set(updatedFacilities.map((facility) => facility.image_url).filter((url): url is string => Boolean(url)));
+      for (const url of oldImageUrls) {
+        if (!keptImageUrls.has(url)) await removeStoredFile(url);
+      }
+      continue;
+    }
     if (removeMedia) {
       await supabase.from("school_settings").upsert({ key, value: "" });
       if (previousUrl) await removeStoredFile(previousUrl);
@@ -275,9 +328,7 @@ export async function saveSettings(formData: FormData) {
       }
     }
     let value: any = raw;
-    if (key === "facilities") {
-      value = raw.split("\n").map((f) => f.trim()).filter(Boolean);
-    } else if (key.startsWith("contact.")) {
+    if (key.startsWith("contact.")) {
       const sub = key.slice(8);
       const { data } = await supabase.from("school_settings").select("value").eq("key", "contact").single();
       const contact = { ...(data?.value || {}), [sub]: raw };
@@ -290,5 +341,5 @@ export async function saveSettings(formData: FormData) {
     if (["logo_url", "hero_image", "favicon_url"].includes(key) && previousUrl && previousUrl !== raw) await removeStoredFile(previousUrl);
   }
   revalidatePath("/", "layout");
-  redirect("/admin/settings?saved=1");
+  redirect("/admin/website?saved=1");
 }

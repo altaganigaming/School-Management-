@@ -80,7 +80,7 @@ export async function deleteLeaveRequest(formData: FormData) {
   const requestId = String(formData.get("id") || "");
   if (!requestId) return;
   const supabase = await createClient();
-  const { error } = await supabase.from("leave_requests").delete().eq("id", requestId);
+  const { error } = await supabase.rpc("hard_delete_leave_request", { p_request_id: requestId });
   if (error) redirect(actor.role === "student" ? "/portal/attendance?error=delete" : "/admin/leave?error=delete");
 
   revalidatePath("/admin");

@@ -25,7 +25,11 @@ export default async function HomePage() {
     ...(teachers || []).filter((teacher) => !facultyNames.has((teacher.full_name || "").trim().toLocaleLowerCase()))
       .map((teacher) => ({ id: `teacher-${teacher.id}`, name: teacher.full_name, image: teacher.avatar_url, description: [teacher.subject_name, teacher.qualification].filter(Boolean).join(" · ") })),
   ].slice(0, 12);
-  const facilities: string[] = s.facilities || [];
+  const facilities = Array.isArray(s.facilities) ? s.facilities.map((facility: unknown) =>
+    typeof facility === "string"
+      ? { name: facility, image_url: null }
+      : { name: String((facility as { name?: unknown })?.name || ""), image_url: String((facility as { image_url?: unknown })?.image_url || "") || null }
+  ).filter((facility: { name: string }) => facility.name.trim()) : [];
   const contact = s.contact || {};
 
   return (
@@ -124,11 +128,14 @@ export default async function HomePage() {
           <span className="rounded-full bg-accent-400/15 px-4 py-2 text-sm font-semibold text-accent-600">Designed for every kind of learner</span>
         </div>
         <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {facilities.map((f, i) => (
-            <article key={i} className={`home-lift relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl ${i === 0 ? "sm:col-span-2 sm:row-span-2 bg-primary-700 text-white" : ""}`}>
-              <div className={`mb-8 mt-5 flex h-12 w-12 items-center justify-center rounded-xl text-xl ${i === 0 ? "bg-white/15 text-white" : "bg-primary-50 text-primary-700"}`}>✦</div>
-              <div className={`max-w-xs font-display text-xl font-bold ${i === 0 ? "sm:text-3xl" : "text-slate-900"}`}>{f}</div>
-              {i === 0 && <div className="absolute -bottom-10 -right-8 h-36 w-36 rounded-full border border-white/20" />}
+          {facilities.map((facility, i) => (
+            <article key={`${facility.name}-${i}`} className={`home-lift group relative min-h-64 overflow-hidden rounded-2xl border border-slate-200/80 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl ${i === 0 ? "sm:col-span-2 sm:row-span-2 sm:min-h-[32rem]" : ""}`}>
+              {facility.image_url && <PhotoViewer src={facility.image_url} alt={`${facility.name} facility`} className="absolute inset-0 h-full w-full" imageClassName="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />}
+              <div className={`pointer-events-none absolute inset-0 ${facility.image_url ? "bg-gradient-to-t from-slate-950/90 via-slate-950/25 to-slate-950/5" : i === 0 ? "bg-primary-700" : "bg-white"}`} />
+              <div className={`pointer-events-none relative z-10 flex min-h-64 flex-col justify-end p-6 ${i === 0 ? "sm:min-h-[32rem]" : ""} ${facility.image_url || i === 0 ? "text-white" : "text-slate-900"}`}>
+                {!facility.image_url && <div className={`mb-8 mt-5 flex h-12 w-12 items-center justify-center rounded-xl text-xl ${i === 0 ? "bg-white/15 text-white" : "bg-primary-50 text-primary-700"}`}>✦</div>}
+                <div className={`max-w-xs font-display text-xl font-bold ${i === 0 ? "sm:text-3xl" : ""}`}>{facility.name}</div>
+              </div>
             </article>
           ))}
         </div>

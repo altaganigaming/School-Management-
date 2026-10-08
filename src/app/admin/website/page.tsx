@@ -2,6 +2,7 @@ import { requireAdmin, getSettings } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { saveSettings } from "@/lib/actions/accounts";
 import { ColorThemePicker } from "@/components/color-theme-picker";
+import { FacilitiesEditor } from "@/components/facilities-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,11 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const s = await getSettings();
   const contact = s.contact || {};
+  const facilityEntries = Array.isArray(s.facilities) ? s.facilities.map((facility: unknown) =>
+    typeof facility === "string"
+      ? { name: facility, image_url: null }
+      : { name: String((facility as { name?: unknown })?.name || ""), image_url: String((facility as { image_url?: unknown })?.image_url || "") || null }
+  ).filter((facility: { name: string }) => facility.name.trim()) : [];
   const primaryColor = typeof s.primary_color === "string" && /^#[0-9a-f]{6}$/i.test(s.primary_color) ? s.primary_color : "#274CE4";
   const accentColor = typeof s.accent_color === "string" && /^#[0-9a-f]{6}$/i.test(s.accent_color) ? s.accent_color : "#F59E0B";
 
@@ -28,6 +34,7 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
     <>
       <PageHeader title="Website CMS" subtitle="Edit the public website without touching code. Changes go live instantly." />
       {sp.saved && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Website updated.</div>}
+      {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "facility_image" ? "Facility photo upload failed. Use an image up to 5 MB." : "Website update failed. Please try again."}</div>}
 
       <form action={saveSettings} className="space-y-6">
         <div className="card">
@@ -85,13 +92,7 @@ export default async function WebsiteCMSPage({ searchParams }: { searchParams: P
           <p className="mt-2 text-xs text-slate-400">Contact fields are saved individually into the contact settings group.</p>
         </div>
 
-        <div className="card">
-          <h2 className="card-title mb-4">Facilities (one per line)</h2>
-          <input type="hidden" name="key" value="facilities" />
-          <textarea name="value:facilities" className="input" rows={5}
-            defaultValue={Array.isArray(s.facilities) ? s.facilities.join("\n") : ""} />
-          <p className="mt-2 text-xs text-slate-400">Tip: facilities typed one-per-line are converted to a list automatically.</p>
-        </div>
+        <FacilitiesEditor initialFacilities={facilityEntries} />
 
         <button className="btn-primary px-8">Save Website</button>
       </form>

@@ -10,17 +10,32 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const supabase = await createClient();
   const { data: student } = await supabase.from("students").select("id").eq("profile_id", profile.id).single();
-  const [{ data: records }, { data: leaves }] = await Promise.all([
+  const [{ data: records }, { data: leaveRows, error: leaveError }] = await Promise.all([
     supabase.from("attendance").select("*").eq("student_id", student?.id).order("date", { ascending: false }).limit(60),
-    supabase.from("leave_requests").select("*, leave_request_history(id, event, previous_status, status, review_note, created_at)").eq("profile_id", profile.id).order("created_at", { ascending: false }),
+    supabase.from("leave_requests").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false }),
   ]);
+  const { data: historyRows } = leaveRows?.length
+    ? await supabase.from("leave_request_history")
+      .select("id, leave_request_id, event, previous_status, status, review_note, created_at")
+      .in("leave_request_id", leaveRows.map((leave) => leave.id))
+    : { data: [] };
+  const historyByRequest = new Map<string, typeof historyRows>(
+    (historyRows || []).reduce((map, entry) => {
+      const entries = map.get(entry.leave_request_id) || [];
+      entries.push(entry);
+      map.set(entry.leave_request_id, entries);
+      return map;
+    }, new Map<string, NonNullable<typeof historyRows>[number][]>())
+  );
+  const leaves = (leaveRows || []).map((leave) => ({ ...leave, leave_request_history: historyByRequest.get(leave.id) || [] }));
   const present = (records || []).filter((r) => r.status === "present").length;
   const rate = records?.length ? Math.round((present / records.length) * 100) : null;
 
   return (<>
     <PageHeader title="Attendance" subtitle={rate !== null ? `Overall: ${rate}% present` : "No records yet"} />
     {(sp.submitted || sp.leave) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-emerald-200">Leave request submitted.</div>}
-    {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">{sp.error === "invalid" ? "Enter a valid date range and reason." : "Leave request could not be submitted."}</div>}
+    {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">{sp.error === "invalid" ? "Enter a valid date range and reason." : sp.error === "delete" ? "Pending leave request could not be deleted." : "Leave request could not be submitted."}</div>}
+    {leaveError && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">Your leave requests could not be loaded.</div>}
 
     <form action={submitLeave} className="card mb-6 grid gap-4 sm:grid-cols-4">
       <h2 className="card-title sm:col-span-4">🌴 Apply for Leave</h2>
@@ -59,7 +74,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                 ))}</ul>
               </details>}
             </td>
-            <td>{l.status === "pending" && <form action={deleteLeaveRequest}><input type="hidden" name="id" value={l.id} /><button className="btn-danger btn-sm">Delete</button></form>}</td></tr>))}
+            <td>{l.status === "pending" && <form action={deleteLeaveRequest}><input type="hidden" name="id" value={l.id} /><button className="btn-danger btn-sm">Delete pending</button></form>}</td></tr>))}
         </tbody>
       </table>
       {!leaves?.length && <EmptyState message="No leave requests." />}

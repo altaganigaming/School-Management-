@@ -85,7 +85,7 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
             )}
             {(canManageLeaves || (l.profile_id === me.id && l.status === "pending")) && <form action={deleteLeaveRequest}>
               <input type="hidden" name="id" value={l.id} />
-              <button className="btn-danger btn-sm">Delete</button>
+              <button className="btn-danger btn-sm">Delete permanently</button>
             </form>}
           </div>
         ))}
