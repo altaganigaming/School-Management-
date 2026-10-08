@@ -388,7 +388,7 @@ begin
       raise exception 'Phone is managed by the school administrator';
     end if;
     if new.avatar_url is distinct from old.avatar_url and new.avatar_url is not null
-      and position('/storage/v1/object/public/avatars/' || old.id::text || '/', new.avatar_url) = 0 then
+      and position('/storage/v1/object/public/avatars/' || old.id::text || '/' in new.avatar_url) = 0 then
       raise exception 'Profile photos must be uploaded to the account avatar folder';
     end if;
     if new.id is distinct from old.id or new.username is distinct from old.username
