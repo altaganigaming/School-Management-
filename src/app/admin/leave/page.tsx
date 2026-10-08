@@ -12,11 +12,21 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
   if (canManageLeaves) await requireAdmin("manage_leave");
   const sp = await searchParams;
   const admin = createAdminClient();
-  let leavesQuery = admin.from("leave_requests")
-    .select("*, profiles(full_name, role), leave_request_history(id, event, previous_status, status, review_note, changed_by, created_at)")
-    .order("created_at", { ascending: false });
+  let leavesQuery = admin.from("leave_requests").select("*, profiles(full_name, role)").order("created_at", { ascending: false });
   if (!canManageLeaves) leavesQuery = leavesQuery.eq("profile_id", me.id);
-  const { data: leaves } = await leavesQuery;
+  const { data: leaveRows, error: leavesError } = await leavesQuery;
+  const { data: historyRows } = leaveRows?.length
+    ? await admin.from("leave_request_history").select("id, leave_request_id, event, previous_status, status, review_note, changed_by, created_at").in("leave_request_id", leaveRows.map((leave) => leave.id))
+    : { data: [] };
+  const historiesByRequest = new Map<string, typeof historyRows>(
+    (historyRows || []).reduce((map, history) => {
+      const records = map.get(history.leave_request_id) || [];
+      records.push(history);
+      map.set(history.leave_request_id, records);
+      return map;
+    }, new Map<string, NonNullable<typeof historyRows>[number][]>())
+  );
+  const leaves = (leaveRows || []).map((leave) => ({ ...leave, leave_request_history: historiesByRequest.get(leave.id) || [] }));
   const { data: deletedRequests } = canManageLeaves
     ? await admin.from("leave_request_history").select("*").eq("event", "deleted").order("created_at", { ascending: false }).limit(100)
     : { data: [] };
@@ -26,6 +36,7 @@ export default async function LeavePage({ searchParams }: { searchParams: Promis
       <PageHeader title={canManageLeaves ? "Leave Requests" : "My Leave Requests"} subtitle={canManageLeaves ? "Review leave applications from staff, teachers and students." : "Submit a leave request and track its status."} />
       {sp.submitted && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Leave request submitted.</div>}
       {sp.error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{sp.error === "invalid" ? "Enter a valid date range and reason." : sp.error === "save" ? "The request could not be updated. Try again." : sp.error === "delete" ? "Leave request could not be deleted." : "Leave request could not be submitted."}</div>}
+      {leavesError && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Leave requests could not be loaded. Check the Supabase leave table and its migrations.</div>}
       {(me.role === "teacher" || me.role === "staff") && <form action={submitLeave} className="card mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block"><span className="label">Leave Type</span><select name="type" className="input"><option value="casual">Casual</option><option value="sick">Sick</option><option value="other">Other</option></select></label>
         <label className="block"><span className="label">From</span><input name="from_date" type="date" className="input" required /></label>

@@ -66,7 +66,6 @@ export async function reviewLeaveRequest(formData: FormData) {
     status,
     review_note: reviewNote || null,
     reviewed_by: reviewer.id,
-    reviewed_at: new Date().toISOString(),
   })
     .eq("id", requestId)
     .eq("status", "pending");

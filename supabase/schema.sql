@@ -297,6 +297,17 @@ create table public.achievements (
   created_at  timestamptz not null default now()
 );
 
+create table public.faculty_profiles (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  image_url text not null,
+  description text not null default '',
+  display_order integer not null default 0,
+  is_published boolean not null default true,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 -- ============================================================
 -- HELPER FUNCTIONS (SECURITY DEFINER)
 -- ============================================================
@@ -462,6 +473,7 @@ alter table public.documents enable row level security;
 alter table public.gallery enable row level security;
 alter table public.events enable row level security;
 alter table public.achievements enable row level security;
+alter table public.faculty_profiles enable row level security;
 alter table public.admission_inquiries enable row level security;
 
 -- ---------- profiles ----------
@@ -678,6 +690,9 @@ create policy "events public read" on public.events for select using (true);
 create policy "events admin write" on public.events for all using (has_permission('manage_events')) with check (has_permission('manage_events'));
 create policy "achievements public read" on public.achievements for select using (true);
 create policy "achievements admin write" on public.achievements for all using (has_permission('manage_achievements')) with check (has_permission('manage_achievements'));
+create policy "faculty public read" on public.faculty_profiles for select using (is_published);
+create policy "faculty principal write" on public.faculty_profiles for all using (is_super_admin()) with check (is_super_admin());
+grant select on public.faculty_profiles to anon, authenticated;
 
 -- ============================================================
 -- STORAGE BUCKETS (run after enabling Storage)

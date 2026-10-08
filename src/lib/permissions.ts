@@ -43,6 +43,7 @@ export const ADMIN_MODULES: NavModule[] = [
   { href: "/admin", label: "Dashboard", icon: "▦", perm: null },
   { href: "/admin/students", label: "Students", icon: "🎓", perm: "manage_students" },
   { href: "/admin/teachers", label: "Teachers", icon: "👩‍🏫", perm: "manage_faculty" },
+  { href: "/admin/faculty", label: "Faculty", icon: "🧑‍🏫", perm: null, superOnly: true },
   { href: "/admin/staff", label: "Staff", icon: "🗂️", perm: "manage_faculty" },
   { href: "/admin/classes", label: "Classes & Subjects", icon: "🏫", perm: "manage_classes" },
   { href: "/admin/attendance", label: "Attendance", icon: "✅", perm: "manage_attendance" },

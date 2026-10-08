@@ -11,13 +11,20 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const s = await getSettings();
   const supabase = await createClient();
-  const [{ data: notices }, { data: events }, gallery, { data: teachers }, { data: achievements }] = await Promise.all([
+  const [{ data: notices }, { data: events }, gallery, { data: teachers }, { data: faculty }, { data: achievements }] = await Promise.all([
     supabase.from("notices").select("*").eq("is_published", true).order("published_at", { ascending: false }).limit(5),
     supabase.from("events").select("*").order("event_date", { ascending: false }).limit(3),
     listGalleryImages(6),
     supabase.from("public_teacher_profiles").select("id, qualification, full_name, avatar_url, subject_name").order("full_name").limit(12),
+    supabase.from("faculty_profiles").select("id, name, image_url, description").eq("is_published", true).order("display_order").order("name").limit(24),
     supabase.from("achievements").select("*").order("achieved_on", { ascending: false }).limit(4),
   ]);
+  const facultyNames = new Set((faculty || []).map((person) => person.name.trim().toLocaleLowerCase()));
+  const websiteFaculty = [
+    ...(faculty || []).map((person) => ({ id: `cms-${person.id}`, name: person.name, image: person.image_url, description: person.description })),
+    ...(teachers || []).filter((teacher) => !facultyNames.has((teacher.full_name || "").trim().toLocaleLowerCase()))
+      .map((teacher) => ({ id: `teacher-${teacher.id}`, name: teacher.full_name, image: teacher.avatar_url, description: [teacher.subject_name, teacher.qualification].filter(Boolean).join(" · ") })),
+  ].slice(0, 12);
   const facilities: string[] = s.facilities || [];
   const contact = s.contact || {};
 
@@ -159,25 +166,24 @@ export default async function HomePage() {
               <p className="mb-3 text-xs font-bold uppercase text-primary-700">People who make it possible</p>
               <h2 className="section-title">Our Faculty</h2>
             </div>
-            <span className="text-sm text-slate-500">Dedicated faculty · {teachers?.length ?? 0} profiles</span>
+            <span className="text-sm text-slate-500">Dedicated faculty · {websiteFaculty.length} profiles</span>
           </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {(teachers || []).map((t) => (
-            <article key={t.id} className="home-lift group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+          {websiteFaculty.map((person) => (
+            <article key={person.id} className="home-lift group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary-100 via-white to-accent-400/20" />
-              {t.avatar_url ? (
-                <PhotoViewer src={t.avatar_url} alt={t.full_name || "Faculty member"} className="relative mx-auto h-20 w-20 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
+              {person.image ? (
+                <PhotoViewer src={person.image} alt={person.name || "Faculty member"} className="relative mx-auto h-20 w-20 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
               ) : (
                 <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
-                  {(t.full_name || "T")[0]}
+                  {(person.name || "T")[0]}
                 </div>
               )}
-              <div className="mt-5 font-display text-lg font-bold text-slate-900">{t.full_name}</div>
-              <div className="mt-1 text-sm font-medium text-primary-700">{t.subject_name || "Faculty"}</div>
-              <div className="mt-2 text-xs text-slate-500">{t.qualification}</div>
+              <div className="mt-5 font-display text-lg font-bold text-slate-900">{person.name}</div>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{person.description || "Faculty"}</p>
             </article>
           ))}
-          {!teachers?.length && <p className="text-center text-slate-400 md:col-span-4">Faculty list will be updated soon.</p>}
+          {!websiteFaculty.length && <p className="text-center text-slate-400 md:col-span-4">Faculty list will be updated soon.</p>}
         </div>
         </div>
       </section>
