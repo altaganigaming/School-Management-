@@ -69,9 +69,10 @@ export async function addContent(table: Table, formData: FormData) {
 
   // optional image/file upload
   const file = formData.get("file") as File | null;
-  const imageContent = table === "gallery" || table === "events" || table === "achievements";
+  const imageContent = table === "gallery" || table === "achievements";
+  const acceptsFile = imageContent || table === "documents";
   const bucket = imageContent ? "gallery" : "documents";
-  if (file && file.size > 0) {
+  if (acceptsFile && file && file.size > 0) {
     if (imageContent && (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024)) redirect(`/admin/${table}?error=image`);
     const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
     const storageApi = createAdminClient().storage;
@@ -106,7 +107,7 @@ export async function deleteContent(table: Table, formData: FormData) {
     const { data: document } = await supabase.from("documents").select("file_url").eq("id", id).maybeSingle();
     if (document?.file_url && !(await removeStoredFile(document.file_url))) redirect("/admin/documents?error=delete");
   }
-  if (table === "events" || table === "achievements") {
+  if (table === "achievements") {
     const { data: item } = await supabase.from(table).select("image_url").eq("id", id).maybeSingle();
     if (item?.image_url && !(await removeStoredFile(item.image_url))) redirect(`/admin/${table}?error=delete`);
   }
@@ -114,7 +115,7 @@ export async function deleteContent(table: Table, formData: FormData) {
   if (error) redirect(`/admin/${table}?error=delete`);
   revalidatePath(`/admin/${table}`);
   if (table === "documents") revalidatePath("/downloads");
-  if (table === "events" || table === "achievements") revalidatePath("/");
+  if (table === "achievements") revalidatePath("/");
 }
 
 export async function deleteGalleryPhoto(formData: FormData) {

@@ -21,7 +21,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         <h2 className="card-title sm:col-span-2 lg:col-span-4">➕ Add New</h2>
         <label className="block"><span className="label">Title</span><input name="title" className="input" required /></label>
         <label className="block"><span className="label">Event Date</span><input name="event_date" type="date" className="input" required /></label>
-        <label className="block"><span className="label">Photo (optional)</span><input name="file" type="file" accept="image/*" className="input" /></label>
         <div className="flex items-end"><button className="btn-primary w-full">Publish</button></div>
         <label className="block sm:col-span-2 lg:col-span-4"><span className="label">Description</span>
           <textarea name="body" className="input" rows={2} /></label>
@@ -29,13 +28,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
       <div className="card overflow-x-auto">
         <table className="table">
-          <thead><tr><th>Event</th><th>Date</th><th>Photo</th><th className="text-right">Action</th></tr></thead>
+          <thead><tr><th>Event</th><th>Date</th><th className="text-right">Action</th></tr></thead>
           <tbody>
             {(items || []).map((item: any) => (
               <tr key={item.id}>
                 <td className="max-w-xl"><div className="font-medium">{item.title}</div>{item.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500">{item.description}</p>}</td>
                 <td className="whitespace-nowrap text-xs">{new Date(`${item.event_date}T00:00:00`).toLocaleDateString()}</td>
-                <td>{item.image_url ? <a href={item.image_url} target="_blank" rel="noreferrer" className="text-sm text-primary-600 underline">View photo</a> : "—"}</td>
                 <td className="text-right">
                   <form action={deleteContent.bind(null, "events")}>
                     <input type="hidden" name="id" value={item.id} />

@@ -166,12 +166,12 @@ export default async function HomePage() {
           </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {websiteFaculty.map((person) => (
-            <article key={person.id} className="home-lift group relative min-h-80 overflow-hidden rounded-2xl border border-primary-100 bg-white p-5 pt-3 text-center shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-              <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-br from-primary-200 via-primary-50 to-accent-400/25" />
+            <article key={person.id} className="home-lift group relative overflow-hidden rounded-2xl border border-primary-100 bg-white p-6 text-center shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+              <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary-200 via-primary-50 to-accent-400/25" />
               {person.image ? (
-                <PhotoViewer src={person.image} alt={person.name || "Faculty member"} className="relative mx-auto mt-3 h-32 w-32 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
+                <PhotoViewer src={person.image} alt={person.name || "Faculty member"} className="relative z-10 mx-auto h-32 w-32 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
               ) : (
-                <div className="relative mx-auto mt-3 flex h-32 w-32 items-center justify-center rounded-full bg-primary-100 text-4xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
+                <div className="relative z-10 mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-primary-100 text-4xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
                   {(person.name || "T")[0]}
                 </div>
               )}
@@ -192,7 +192,7 @@ export default async function HomePage() {
             <div className="mt-10 grid gap-4 md:grid-cols-4">
               {achievements.map((a) => (
                   <div key={a.id} className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
-                  {a.image_url && <PhotoViewer src={a.image_url} alt={a.title} className="mb-4 h-32 w-full overflow-hidden rounded-xl" imageClassName="h-full w-full object-cover" />}
+                  {a.image_url && <PhotoViewer src={a.image_url} alt={a.title} className="relative mb-4 aspect-[4/3] w-full overflow-hidden rounded-xl" imageClassName="absolute inset-0 h-full w-full object-cover" />}
                   <div className="text-2xl">🏆</div>
                   <div className="mt-2 font-bold">{a.title}</div>
                   <p className="mt-1 text-sm text-slate-300">{a.description}</p>
@@ -243,7 +243,6 @@ export default async function HomePage() {
                     <div className="font-display text-lg font-bold text-slate-900">{e.title}</div>
                     <p className="text-sm text-slate-500 line-clamp-2">{e.description}</p>
                   </div>
-                  {e.image_url && <PhotoViewer src={e.image_url} alt={e.title} className="h-16 w-16 shrink-0 overflow-hidden rounded-xl" imageClassName="h-full w-full object-cover" />}
                 </article>
               ))}
             </div>
@@ -308,8 +307,8 @@ export default async function HomePage() {
               <p className="flex gap-3"><span aria-hidden="true">✉️</span>{contact.email}</p>
             </div>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-2 shadow-2xl shadow-black/30">
-            <iframe src={contact.map_embed} width="100%" height="320" style={{ border: 0 }} loading="lazy" title="School map" />
+          <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5 shadow-2xl shadow-black/30">
+            <iframe src={contact.map_embed} width="100%" height="320" className="block w-full align-bottom" style={{ border: 0, display: "block", verticalAlign: "bottom" }} loading="lazy" title="School map" />
           </div>
         </div>
       </section>
