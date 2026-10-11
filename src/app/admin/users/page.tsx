@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSuperAdmin } from "@/lib/auth";
-import { PageHeader, Badge, Field } from "@/components/ui";
-import { createAccount, toggleAccount, resetPassword, deleteAccount } from "@/lib/actions/accounts";
+import { PageHeader, Badge } from "@/components/ui";
+import { toggleAccount, resetPassword, deleteAccount } from "@/lib/actions/accounts";
+import CreateAccountForm from "./create-account-form";
 
 export const dynamic = "force-dynamic";
 
@@ -25,42 +26,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       {(sp.reset || sp.updated || sp.deleted) && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Done.</div>}
       {sp.protected && <div className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">The super admin account is protected and cannot be deactivated.</div>}
 
-      {/* CREATE ACCOUNT FORM */}
-      <form action={createAccount} className="card mb-8">
-        <h2 className="card-title">➕ Create Account</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Role"><select name="role" className="input" required>
-            <option value="teacher">Teacher</option><option value="staff">Staff</option><option value="student">Student</option>
-          </select></Field>
-          <Field label="Username"><input name="username" className="input" required /></Field>
-          <Field label="Password"><input name="password" className="input" required minLength={6} /></Field>
-          <Field label="Full Name"><input name="full_name" className="input" required /></Field>
-          <Field label="Admission No. (student)"><input name="admission_no" className="input" placeholder="e.g. ADM-2026-001" /></Field>
-          <Field label="Employee ID (teacher)"><input name="employee_id" className="input" placeholder="e.g. EMP-001" /></Field>
-          <Field label="Student Class / Section"><select name="class_id" className="input" defaultValue="">
-            <option value="">Select class</option>
-            {(classes || []).map((item) => <option key={item.id} value={item.id}>{item.name} - {item.section}</option>)}
-          </select></Field>
-          <Field label="Student Roll No."><input name="roll_no" type="number" min={1} className="input" /></Field>
-          <Field label="Teacher Classes"><div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
-            <input type="hidden" name="assigned_classes" value="" />
-            {(classes || []).map((item) => <label key={item.id} className="flex items-center gap-2 text-sm"><input type="checkbox" name="assigned_classes" value={item.id} className="h-4 w-4" />{item.name} - {item.section}</label>)}
-          </div></Field>
-          <Field label="Teacher Subjects"><div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">
-            <input type="hidden" name="assigned_subjects" value="" />
-            {(subjects || []).map((item) => <label key={item.id} className="flex items-center gap-2 text-sm"><input type="checkbox" name="assigned_subjects" value={item.id} className="h-4 w-4" />{item.name}</label>)}
-          </div></Field>
-          <Field label="Phone"><input name="phone" className="input" /></Field>
-          <Field label="Parent Name"><input name="parent_name" className="input" placeholder="students only" /></Field>
-          <Field label="Parent Phone"><input name="parent_phone" className="input" placeholder="students only" /></Field>
-          <Field label="Monthly Fee"><input name="monthly_fee" type="number" className="input" placeholder="students only" /></Field>
-          <Field label="Qualification"><input name="qualification" className="input" placeholder="teachers only" /></Field>
-          <Field label="Joining / Admission Date"><input name="admission_date" type="date" className="input" /></Field>
-          <Field label="Address"><input name="address" className="input" /></Field>
-        </div>
-        <button className="btn-primary mt-4">Create Account</button>
-        <p className="mt-2 text-xs text-slate-400">Student accounts use one class and roll number. Teacher accounts can be assigned to multiple classes.</p>
-      </form>
+      <CreateAccountForm classes={classes || []} subjects={subjects || []} />
 
       {/* USERS TABLE */}
       <div className="card overflow-x-auto">
