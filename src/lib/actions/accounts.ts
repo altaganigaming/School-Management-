@@ -6,11 +6,13 @@ import { requireAdmin, requireSuperAdmin, getProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { usernameToEmail } from "@/lib/utils";
-import type { Role } from "@/lib/permissions";
+import { hasPerm, type Role } from "@/lib/permissions";
 import { removeStoredFile } from "@/lib/storage";
 
-async function assertCanManage(targetRole: Role, permission: string) {
-  const me = await requireAdmin(permission);
+async function assertCanManage(targetRole: Role, permission: string | string[]) {
+  const me = await requireAdmin();
+  const permissions = Array.isArray(permission) ? permission : [permission];
+  if (!permissions.some((key) => hasPerm(me.role, me.permissions, key))) redirect("/admin?denied=1");
   if (me.role !== "super_admin" && targetRole !== "student") {
     redirect("/admin?denied=1"); // only Principal manages faculty/staff
   }
@@ -21,8 +23,8 @@ export async function createAccount(formData: FormData) {
   const roleValue = String(formData.get("role") || "");
   if (!(["student", "teacher", "staff"] as string[]).includes(roleValue)) redirect("/admin/users?error=missing");
   const role = roleValue as Role;
-  const permission = role === "student" ? "manage_students" : "manage_faculty";
-  await assertCanManage(role, permission);
+  const permission = role === "student" ? ["manage_students", "create_student_accounts"] : "manage_faculty";
+  const creator = await assertCanManage(role, permission);
 
   const username = String(formData.get("username") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
@@ -102,7 +104,9 @@ export async function createAccount(formData: FormData) {
   revalidatePath("/admin/teachers");
   revalidatePath("/admin/salaries");
   revalidatePath("/admin/fees");
-  redirect(`/admin/users?created=${username}`);
+  redirect(creator.role === "super_admin"
+    ? `/admin/users?created=${encodeURIComponent(username)}`
+    : `/admin/students/create?created=${encodeURIComponent(username)}`);
 }
 
 export async function updateProfileRecord(formData: FormData) {

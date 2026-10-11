@@ -3,6 +3,7 @@ import { requireAdmin, getProfile } from "@/lib/auth";
 import { PageHeader, Badge } from "@/components/ui";
 import { updateProfileRecord } from "@/lib/actions/accounts";
 import { ensureStudentRecords } from "@/lib/admin-records";
+import { hasPerm } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,9 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader title="Students" subtitle={`${students?.length ?? 0} enrolled students`} actions={
-        <a href="/admin/users" className="btn-primary">➕ Create Student Account</a>
+        (hasPerm(me.role, me.permissions, "manage_students") || hasPerm(me.role, me.permissions, "create_student_accounts"))
+          ? <a href={me.role === "super_admin" ? "/admin/users" : "/admin/students/create"} className="btn-primary">➕ Create Student Account</a>
+          : undefined
       } />
       {sp.error === "placement" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Choose a class and enter a valid roll number.</div>}
       {sp.error === "save" && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Student details could not be saved.</div>}

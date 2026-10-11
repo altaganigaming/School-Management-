@@ -42,6 +42,7 @@ export interface NavModule { href: string; label: string; icon: string; perm: st
 export const ADMIN_MODULES: NavModule[] = [
   { href: "/admin", label: "Dashboard", icon: "▦", perm: null },
   { href: "/admin/students", label: "Students", icon: "🎓", perm: "manage_students" },
+  { href: "/admin/students/create", label: "Create Student Account", icon: "➕", perm: "create_student_accounts" },
   { href: "/admin/teachers", label: "Teachers", icon: "👩‍🏫", perm: "manage_faculty" },
   { href: "/admin/faculty", label: "Faculty", icon: "🧑‍🏫", perm: null, superOnly: true },
   { href: "/admin/staff", label: "Staff", icon: "🗂️", perm: "manage_faculty" },

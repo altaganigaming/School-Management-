@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { hasPerm, type Role } from "@/lib/permissions";
 
@@ -15,7 +16,7 @@ export interface Profile {
   is_active: boolean;
 }
 
-export async function getProfile(): Promise<Profile | null> {
+export const getProfile = cache(async function getProfile(): Promise<Profile | null> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -26,7 +27,7 @@ export async function getProfile(): Promise<Profile | null> {
     .single();
   if (!data || !data.is_active) return null;
   return data as Profile;
-}
+});
 
 export async function requireLogin(): Promise<Profile> {
   const profile = await getProfile();
