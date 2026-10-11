@@ -13,7 +13,7 @@ export default async function SalarySlipPage({ params }: { params: Promise<{ id:
   const s = await getSettings();
   const admin = createAdminClient();
   const { data: r } = await admin.from("salary_records")
-    .select("*, teachers(employee_id, qualification, joining_date, profiles(full_name))").eq("id", id).single();
+    .select("*, teachers(employee_id, qualification, joining_date, profiles(full_name)), profiles(full_name, role)").eq("id", id).single();
   if (!r) notFound();
   const t = r.teachers;
   const teacherProfile = Array.isArray(t?.profiles) ? t.profiles[0] : t?.profiles;
@@ -27,8 +27,9 @@ export default async function SalarySlipPage({ params }: { params: Promise<{ id:
           <h2 className="mt-4 inline-block rounded-lg bg-slate-100 px-6 py-1 text-sm font-bold uppercase tracking-widest">Salary Slip</h2>
         </div>
         <div className="mt-8 grid grid-cols-2 gap-4 text-sm">
-          <div><span className="text-slate-400">Employee:</span> <b>{teacherProfile?.full_name || "—"}</b></div>
-          <div><span className="text-slate-400">Employee ID:</span> <b>{t?.employee_id}</b></div>
+          <div><span className="text-slate-400">Employee:</span> <b>{teacherProfile?.full_name || r.profiles?.full_name || "—"}</b></div>
+          <div><span className="text-slate-400">Employee ID:</span> <b>{t?.employee_id || "—"}</b></div>
+          <div><span className="text-slate-400">Role:</span> <b className="capitalize">{t ? "Teacher" : r.profiles?.role || "Staff"}</b></div>
           <div><span className="text-slate-400">Month:</span> <b>{monthLabel(r.month)}</b></div>
           <div><span className="text-slate-400">Status:</span> <b className="text-emerald-600">PAID</b></div>
           <div><span className="text-slate-400">Paid On:</span> {r.paid_at ? new Date(r.paid_at).toLocaleDateString() : "—"}</div>

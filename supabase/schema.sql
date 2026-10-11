@@ -135,15 +135,18 @@ alter table public.payment_proofs
 -- ---------- SALARIES ----------
 create table public.salary_records (
   id          uuid primary key default gen_random_uuid(),
-  teacher_id  uuid not null references public.teachers(id) on delete cascade,
+  teacher_id  uuid references public.teachers(id) on delete cascade,
+  profile_id  uuid references public.profiles(id) on delete cascade,
   month       text not null,               -- '2026-04'
   amount      numeric(10,2) not null,
   status      text not null default 'pending' check (status in ('pending','paid')),
   paid_at     timestamptz,
   approved_by uuid references public.profiles(id),
   created_at  timestamptz not null default now(),
-  unique (teacher_id, month)
+  unique (teacher_id, month),
+  check (num_nonnulls(teacher_id, profile_id) = 1)
 );
+create unique index salary_records_profile_month_unique on public.salary_records (profile_id, month);
 
 -- ---------- ATTENDANCE ----------
 create table public.attendance (
@@ -266,7 +269,7 @@ create table public.documents (
   title      text not null,
   file_url   text not null,
   category   text not null default 'general',
-  audience   text not null default 'public' check (audience in ('public','student','teacher')),
+  audience   text not null default 'public' check (audience in ('public','student','teacher','staff')),
   created_by uuid references public.profiles(id),
   created_at timestamptz not null default now()
 );
@@ -587,7 +590,7 @@ create policy "receipts admin insert"
 
 -- ---------- salaries ----------
 create policy "salary teacher read own"
-  on public.salary_records for select using (teacher_id = my_teacher_id() or has_permission('manage_salaries'));
+  on public.salary_records for select using (teacher_id = my_teacher_id() or profile_id = auth.uid() or has_permission('manage_salaries'));
 create policy "salary admin write"
   on public.salary_records for all using (has_permission('manage_salaries')) with check (has_permission('manage_salaries'));
 
@@ -691,9 +694,10 @@ create policy "notices admin write"
 
 create policy "docs read"
   on public.documents for select using (
-    audience = 'public' or is_active_admin()
-    or (audience = 'student' and exists (select 1 from profiles where id = auth.uid() and role = 'student'))
-    or (audience = 'teacher' and exists (select 1 from profiles where id = auth.uid() and role in ('teacher','staff','super_admin')))
+    audience = 'public'
+    or exists (select 1 from profiles where id = auth.uid() and is_active and role::text = audience)
+    or exists (select 1 from profiles where id = auth.uid() and is_active and role = 'super_admin')
+      or has_permission('manage_documents')
   );
 create policy "docs admin write"
   on public.documents for all using (has_permission('manage_documents')) with check (has_permission('manage_documents'));
@@ -713,7 +717,7 @@ grant select on public.faculty_profiles to anon, authenticated;
 -- ============================================================
 insert into storage.buckets (id, name, public) values
   ('proofs', 'proofs', false),
-  ('documents', 'documents', true),
+  ('documents', 'documents', false),
   ('gallery', 'gallery', true),
   ('avatars', 'avatars', true)
 on conflict do nothing;
@@ -722,10 +726,6 @@ create policy "proofs upload own" on storage.objects for insert
   with check (bucket_id = 'proofs' and auth.role() = 'authenticated');
 create policy "proofs read admin or own" on storage.objects for select
   using (bucket_id = 'proofs' and (is_active_admin() or auth.uid()::text = (storage.foldername(name))[1]));
-create policy "docs public read" on storage.objects for select
-  using (bucket_id = 'documents');
-create policy "docs admin write" on storage.objects for all
-  using (bucket_id = 'documents' and is_active_admin());
 create policy "gallery public read" on storage.objects for select
   using (bucket_id = 'gallery');
 create policy "gallery admin write" on storage.objects for all

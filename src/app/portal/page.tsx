@@ -1,12 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireStudent } from "@/lib/auth";
+import { requireLogin } from "@/lib/auth";
 import { StatCard, Badge } from "@/components/ui";
 import { formatCurrency, monthLabel } from "@/lib/utils";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalHome() {
-  const profile = await requireStudent();
+  const profile = await requireLogin();
+  if (profile.role !== "student") {
+    return (
+      <>
+        <div className="card mb-6 bg-gradient-to-r from-primary-700 to-primary-900 !text-white">
+          <p className="text-xs font-semibold uppercase text-primary-100">{profile.role} portal</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">Welcome, {profile.full_name}</h1>
+          <p className="mt-1 text-sm text-white/75">Your profile, shared school documents and salary records are here.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[["/portal/profile", "👤", "My Profile"], ["/portal/salaries", "💵", "Salary Records"], ["/portal/documents", "📄", "Documents"]].map(([href, icon, label]) => (
+            <Link key={href} href={href} className="card home-lift flex min-h-32 items-center gap-4 border-l-4 border-primary-500 hover:shadow-md">
+              <span className="text-3xl">{icon}</span><span className="font-semibold text-slate-900">{label}</span>
+            </Link>
+          ))}
+        </div>
+      </>
+    );
+  }
   const supabase = await createClient();
   const { data: student } = await supabase.from("students")
     .select("*, classes(name, section)").eq("profile_id", profile.id).single();

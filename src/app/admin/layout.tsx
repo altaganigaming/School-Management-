@@ -34,8 +34,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="text-slate-400">@{profile.username}</div>
           <div className="mt-3 flex gap-2">
             <Link href="/" className="btn-secondary btn-sm flex-1">Website</Link>
-            <form action={logout}><button className="btn-danger btn-sm w-full">Logout</button></form>
+            {profile.role !== "super_admin" && <Link href="/portal" className="btn-secondary btn-sm flex-1">My Portal</Link>}
           </div>
+          <form action={logout} className="mt-2"><button className="btn-danger btn-sm w-full">Logout</button></form>
         </div>
       </aside>
 
@@ -43,7 +44,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white p-3 lg:hidden">
           <Link href="/admin" className="font-display font-bold text-slate-900">🏫 Admin</Link>
-          <form action={logout}><button className="btn-danger btn-sm">Logout</button></form>
+          <div className="flex items-center gap-2">
+            {profile.role !== "super_admin" && <Link href="/portal" className="btn-secondary btn-sm">My Portal</Link>}
+            <form action={logout}><button className="btn-danger btn-sm">Logout</button></form>
+          </div>
         </div>
         <details className="border-b border-slate-200 bg-slate-50 lg:hidden">
           <summary className="cursor-pointer p-3 text-sm font-semibold text-slate-600">☰ Modules ({modules.length})</summary>

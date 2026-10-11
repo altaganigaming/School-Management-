@@ -58,22 +58,24 @@ export async function addContent(table: Table, formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   const payload: Record<string, any> = {
     title: String(formData.get("title")),
-    created_by: user?.id,
   };
+  if (table === "notices" || table === "documents") payload.created_by = user?.id;
   const f = (k: string) => String(formData.get(k) || "");
 
   if (table === "notices") Object.assign(payload, { body: f("body"), category: f("category") || "notice" });
-  if (table === "events") Object.assign(payload, { description: f("body"), event_date: f("event_date") });
-  if (table === "achievements") Object.assign(payload, { description: f("body"), achieved_on: f("event_date") });
+  if (table === "events") Object.assign(payload, { description: f("body"), event_date: f("event_date") || null });
+  if (table === "achievements") Object.assign(payload, { description: f("body"), achieved_on: f("event_date") || null });
   if (table === "documents") Object.assign(payload, { audience: f("audience") || "public", category: f("category") || "general" });
 
   // optional image/file upload
   const file = formData.get("file") as File | null;
-  const bucket = table === "gallery" ? "gallery" : "documents";
+  const imageContent = table === "gallery" || table === "events" || table === "achievements";
+  const bucket = imageContent ? "gallery" : "documents";
   if (file && file.size > 0) {
+    if (imageContent && (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024)) redirect(`/admin/${table}?error=image`);
     const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
     const storageApi = createAdminClient().storage;
-    if (table === "gallery") {
+    if (imageContent) {
       const { error: bucketError } = await storageApi.getBucket(bucket);
       if (bucketError) {
         const { error: createError } = await storageApi.createBucket(bucket, { public: true });
@@ -85,13 +87,13 @@ export async function addContent(table: Table, formData: FormData) {
     const { error } = await storageApi.from(bucket).upload(path, file, { contentType: file.type || undefined });
     if (error) redirect(`/admin/${table}?error=${encodeURIComponent(error.message.slice(0, 80))}`);
     const url = storageApi.from(bucket).getPublicUrl(path).data.publicUrl;
-    if (table === "gallery") payload.image_url = url; else payload.file_url = url;
+    if (imageContent) payload.image_url = url; else payload.file_url = url;
   }
   if (table === "gallery" && !payload.image_url) payload.image_url = f("image_url");
 
   const { error } = await supabase.from(table).insert(payload);
   if (error) redirect(`/admin/${table}?error=save`);
-  if (table === "gallery") revalidatePath("/");
+  if (table === "gallery" || table === "events" || table === "achievements") revalidatePath("/");
   revalidatePath(`/admin/${table === "achievements" ? "achievements" : table}`);
   redirect(`/admin/${table}?added=1`);
 }
@@ -104,10 +106,15 @@ export async function deleteContent(table: Table, formData: FormData) {
     const { data: document } = await supabase.from("documents").select("file_url").eq("id", id).maybeSingle();
     if (document?.file_url && !(await removeStoredFile(document.file_url))) redirect("/admin/documents?error=delete");
   }
+  if (table === "events" || table === "achievements") {
+    const { data: item } = await supabase.from(table).select("image_url").eq("id", id).maybeSingle();
+    if (item?.image_url && !(await removeStoredFile(item.image_url))) redirect(`/admin/${table}?error=delete`);
+  }
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error) redirect(`/admin/${table}?error=delete`);
   revalidatePath(`/admin/${table}`);
   if (table === "documents") revalidatePath("/downloads");
+  if (table === "events" || table === "achievements") revalidatePath("/");
 }
 
 export async function deleteGalleryPhoto(formData: FormData) {

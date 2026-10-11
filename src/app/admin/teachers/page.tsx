@@ -86,12 +86,6 @@ export default async function TeachersPage({ searchParams }: { searchParams: Pro
           </fieldset>}
           {teacherProfile(selectedTeacher)?.avatar_url && <PhotoViewer src={teacherProfile(selectedTeacher)!.avatar_url!} alt={teacherProfile(selectedTeacher)?.full_name || "Faculty member"} className="h-20 w-20 rounded-full" imageClassName="h-full w-full rounded-full object-cover" />}
           <label className="block"><span className="label">Qualification</span><input name="qualification" className="input" defaultValue={selectedTeacher.qualification || ""} /></label>
-          <label className="block"><span className="label">Subjects</span>
-            <input type="hidden" name="assigned_subjects" value="" />
-            <select name="assigned_subjects" className="input" multiple size={4} defaultValue={Array.isArray(selectedTeacher.assigned_subjects) && selectedTeacher.assigned_subjects.length ? selectedTeacher.assigned_subjects.map(String) : selectedTeacher.subject_id ? [selectedTeacher.subject_id] : []}>
-              {(subjects || []).map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-            </select>
-          </label>
           <label className="block"><span className="label">Joining Date</span><input name="joining_date" type="date" className="input" defaultValue={selectedTeacher.joining_date || ""} /></label>
           <div className="block sm:col-span-2"><span className="label">Assigned Classes / Sections</span>
             <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3">

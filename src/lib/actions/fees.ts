@@ -182,18 +182,29 @@ async function nextReceiptNo(admin: any): Promise<string> {
 export async function addSalaryRecord(formData: FormData) {
   await requireAdmin("manage_salaries");
   const admin = createAdminClient();
-  const teacherId = String(formData.get("teacher_id") || "");
+  const [targetRole, targetId] = String(formData.get("salary_target") || "").split(":");
   const month = String(formData.get("month") || "");
   const amount = Number(formData.get("amount") || 0);
-  if (!teacherId || !month || !amount || amount < 0) redirect("/admin/salaries?error=invalid");
+  if (!targetId || !["teacher", "staff"].includes(targetRole) || !/^\d{4}-\d{2}$/.test(month) || !Number.isFinite(amount) || amount <= 0) redirect("/admin/salaries?error=invalid");
+  let owner: { teacher_id?: string; profile_id?: string };
+  if (targetRole === "teacher") {
+    const { data: teacher } = await admin.from("teachers").select("id").eq("id", targetId).maybeSingle();
+    if (!teacher) redirect("/admin/salaries?error=invalid");
+    owner = { teacher_id: teacher.id };
+  } else {
+    const { data: staff } = await admin.from("profiles").select("id").eq("id", targetId).eq("role", "staff").maybeSingle();
+    if (!staff) redirect("/admin/salaries?error=invalid");
+    owner = { profile_id: staff.id };
+  }
   const { error } = await admin.from("salary_records").upsert({
-    teacher_id: teacherId,
+    ...owner,
     month,
     amount,
     status: "pending",
-  }, { onConflict: "teacher_id,month" });
+  }, { onConflict: targetRole === "teacher" ? "teacher_id,month" : "profile_id,month" });
   if (error) redirect(`/admin/salaries?error=${error.code === "23505" ? "duplicate" : "invalid"}`);
   revalidatePath("/admin/salaries");
+  revalidatePath("/portal/salaries");
   redirect("/admin/salaries?added=1");
 }
 
@@ -204,6 +215,7 @@ export async function paySalary(formData: FormData) {
     status: "paid", paid_at: new Date().toISOString(), approved_by: me.id,
   }).eq("id", String(formData.get("record_id")));
   revalidatePath("/admin/salaries");
+  revalidatePath("/portal/salaries");
   redirect("/admin/salaries?paid=1");
 }
 
@@ -213,5 +225,6 @@ export async function deleteSalaryRecord(formData: FormData) {
   const { error } = await admin.from("salary_records").delete().eq("id", String(formData.get("record_id") || ""));
   if (error) redirect("/admin/salaries?error=delete");
   revalidatePath("/admin/salaries");
+  revalidatePath("/portal/salaries");
   redirect("/admin/salaries?deleted=1");
 }

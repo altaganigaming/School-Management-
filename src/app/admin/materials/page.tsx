@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
-import { downloadUrl } from "@/lib/utils";
 import { removeStoredFile } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -88,7 +87,7 @@ export default async function MaterialsPage() {
                 {m.subjects && <Badge color="purple">{m.subjects.name}</Badge>}
               </div>
               <p className="text-sm text-slate-500">{m.description}</p>
-              {m.file_url && <a href={downloadUrl(m.file_url, m.title)} className="text-sm text-primary-600 underline">Download file ⭳</a>}
+              {m.file_url && <a href={`/api/downloads/materials/${m.id}`} className="text-sm text-primary-600 underline">Download file ⭳</a>}
             </div>
             <form action={deleteMaterial}><input type="hidden" name="id" value={m.id} />
               <button className="btn-danger btn-sm">Delete</button></form>

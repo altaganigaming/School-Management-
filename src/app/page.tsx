@@ -13,7 +13,7 @@ export default async function HomePage() {
   const supabase = await createClient();
   const [{ data: notices }, { data: events }, gallery, { data: teachers }, { data: faculty }, { data: achievements }] = await Promise.all([
     supabase.from("notices").select("*").eq("is_published", true).order("published_at", { ascending: false }).limit(5),
-    supabase.from("events").select("*").order("event_date", { ascending: false }).limit(3),
+    supabase.from("events").select("*").gte("event_date", new Date().toISOString().slice(0, 10)).order("event_date", { ascending: true }).limit(3),
     listGalleryImages(6),
     supabase.from("public_teacher_profiles").select("id, qualification, full_name, avatar_url, subject_name").order("full_name").limit(12),
     supabase.from("faculty_profiles").select("id, name, image_url, description").eq("is_published", true).order("display_order").order("name").limit(24),
@@ -113,26 +113,45 @@ export default async function HomePage() {
       </section>
 
       {/* NOTICES */}
-      <section id="notices" className="relative overflow-hidden bg-slate-100/75 py-20 sm:py-28">
-        <div className="page-wrap grid gap-10 lg:grid-cols-[.75fr_1.25fr]">
-          <div className="lg:sticky lg:top-28 lg:self-start">
-            <p className="mb-3 text-xs font-bold uppercase text-primary-700">From the school</p>
-            <h2 className="section-title">Notices & News</h2>
-            <p className="mt-4 max-w-sm leading-relaxed text-slate-600">The latest announcements and updates from {s.school_name}.</p>
+      <section id="notices" className="relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-accent-400/10 py-20 sm:py-28">
+        <div className="page-wrap">
+          <div className="mb-9 flex flex-wrap items-end justify-between gap-5">
+            <div>
+              <p className="mb-3 text-xs font-bold uppercase text-primary-700">From the school</p>
+              <h2 className="section-title">Notices & News</h2>
+              <p className="mt-3 max-w-xl leading-relaxed text-slate-600">Important updates and stories from {s.school_name}.</p>
+            </div>
+            <span className="rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-sm font-semibold text-primary-800">{notices?.length || 0} latest updates</span>
           </div>
-          <div className="space-y-3">
-            {(notices || []).map((n, i) => (
-              <article key={n.id} className={`home-lift rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6 ${i === 0 ? "border-primary-200 bg-white shadow-lg sm:-ml-6" : "border-slate-200 bg-white/75"}`}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="badge bg-primary-100 text-primary-800 capitalize">{n.category}</span>
-                  <time className="text-xs text-slate-400">{new Date(n.published_at).toLocaleDateString()}</time>
+          {notices?.length ? (
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+              <article className="home-lift relative flex min-h-72 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-primary-800 to-primary-600 p-7 text-white shadow-xl shadow-primary-900/20 sm:p-9">
+                <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full border border-white/15" />
+                <div className="relative flex items-center justify-between gap-3">
+                  <span className="badge bg-accent-400 text-white capitalize">{notices[0].category}</span>
+                  <time className="text-xs text-white/70">{new Date(notices[0].published_at).toLocaleDateString()}</time>
                 </div>
-                <h3 className="mt-3 font-display text-xl font-bold text-slate-900">{n.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{n.body}</p>
+                <div className="relative mt-12">
+                  <p className="text-xs font-semibold uppercase text-white/65">Latest update</p>
+                  <h3 className="mt-2 font-display text-2xl font-bold sm:text-3xl">{notices[0].title}</h3>
+                  <p className="mt-3 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-white/80">{notices[0].body}</p>
+                </div>
               </article>
-            ))}
-            {!notices?.length && <p className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-400">No notices published yet.</p>}
-          </div>
+              <div className="grid gap-3">
+                {notices.slice(1).map((notice) => (
+                  <article key={notice.id} className="home-lift rounded-2xl border border-primary-100 bg-white/90 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="badge bg-accent-400/15 text-accent-600 capitalize">{notice.category}</span>
+                      <time className="text-xs text-slate-400">{new Date(notice.published_at).toLocaleDateString()}</time>
+                    </div>
+                    <h3 className="mt-3 font-display text-lg font-bold text-slate-900">{notice.title}</h3>
+                    <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-slate-600">{notice.body}</p>
+                  </article>
+                ))}
+                {notices.length === 1 && <div className="flex items-center rounded-2xl border border-dashed border-primary-200 bg-white/60 p-6 text-sm text-slate-500">More school news will appear here.</div>}
+              </div>
+            </div>
+          ) : <p className="rounded-2xl border border-dashed border-primary-200 bg-white/70 p-8 text-center text-slate-500">No notices published yet.</p>}
         </div>
       </section>
 
@@ -144,21 +163,20 @@ export default async function HomePage() {
               <p className="mb-3 text-xs font-bold uppercase text-primary-700">People who make it possible</p>
               <h2 className="section-title">Our Faculty</h2>
             </div>
-            <span className="text-sm text-slate-500">Dedicated faculty · {websiteFaculty.length} profiles</span>
           </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {websiteFaculty.map((person) => (
-            <article key={person.id} className="home-lift group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-              <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary-100 via-white to-accent-400/20" />
+            <article key={person.id} className="home-lift group relative min-h-80 overflow-hidden rounded-2xl border border-primary-100 bg-white p-5 pt-3 text-center shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+              <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-br from-primary-200 via-primary-50 to-accent-400/25" />
               {person.image ? (
-                <PhotoViewer src={person.image} alt={person.name || "Faculty member"} className="relative mx-auto h-20 w-20 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
+                <PhotoViewer src={person.image} alt={person.name || "Faculty member"} className="relative mx-auto mt-3 h-32 w-32 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
               ) : (
-                <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-100 text-2xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
+                <div className="relative mx-auto mt-3 flex h-32 w-32 items-center justify-center rounded-full bg-primary-100 text-4xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
                   {(person.name || "T")[0]}
                 </div>
               )}
-              <div className="mt-5 font-display text-lg font-bold text-slate-900">{person.name}</div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{person.description || "Faculty"}</p>
+              <div className="relative mt-5 font-display text-lg font-bold text-slate-900">{person.name}</div>
+              <p className="relative mt-2 text-sm leading-relaxed text-slate-600">{person.description || "Faculty"}</p>
             </article>
           ))}
           {!websiteFaculty.length && <p className="text-center text-slate-400 md:col-span-4">Faculty list will be updated soon.</p>}
@@ -173,7 +191,8 @@ export default async function HomePage() {
             <h2 className="section-title !text-white text-center">Achievements</h2>
             <div className="mt-10 grid gap-4 md:grid-cols-4">
               {achievements.map((a) => (
-                <div key={a.id} className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+                  <div key={a.id} className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+                  {a.image_url && <PhotoViewer src={a.image_url} alt={a.title} className="mb-4 h-32 w-full overflow-hidden rounded-xl" imageClassName="h-full w-full object-cover" />}
                   <div className="text-2xl">🏆</div>
                   <div className="mt-2 font-bold">{a.title}</div>
                   <p className="mt-1 text-sm text-slate-300">{a.description}</p>
@@ -220,10 +239,11 @@ export default async function HomePage() {
                     <span className="text-lg font-bold leading-none">{new Date(e.event_date).getDate()}</span>
                     <span className="text-[10px] uppercase">{new Date(e.event_date).toLocaleString("en-US", { month: "short" })}</span>
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="font-display text-lg font-bold text-slate-900">{e.title}</div>
                     <p className="text-sm text-slate-500 line-clamp-2">{e.description}</p>
                   </div>
+                  {e.image_url && <PhotoViewer src={e.image_url} alt={e.title} className="h-16 w-16 shrink-0 overflow-hidden rounded-xl" imageClassName="h-full w-full object-cover" />}
                 </article>
               ))}
             </div>

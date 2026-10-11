@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireStudent } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
-import { downloadUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +19,7 @@ export default async function MaterialsPage() {
             {m.classes && <Badge color="blue">{m.classes.name}-{m.classes.section}</Badge>}
             {m.subjects && <Badge color="purple">{m.subjects.name}</Badge>}</div>
           <p className="mt-1 text-sm text-slate-500">{m.description}</p>
-          {m.file_url && <a href={downloadUrl(m.file_url, m.title)} className="text-sm text-primary-600 underline">Download ⭳</a>}
+          {m.file_url && <a href={`/api/downloads/materials/${m.id}`} className="text-sm text-primary-600 underline">Download ⭳</a>}
         </div>))}
       {!items?.length && <EmptyState message="No materials uploaded yet." />}
     </div></>);
