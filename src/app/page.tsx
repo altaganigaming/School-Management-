@@ -166,17 +166,19 @@ export default async function HomePage() {
           </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {websiteFaculty.map((person) => (
-            <article key={person.id} className="home-lift group relative overflow-hidden rounded-2xl border border-primary-100 bg-white p-6 text-center shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-              <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary-200 via-primary-50 to-accent-400/25" />
-              {person.image ? (
-                <PhotoViewer src={person.image} alt={person.name || "Faculty member"} className="relative z-10 mx-auto h-32 w-32 rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
-              ) : (
-                <div className="relative z-10 mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-primary-100 text-4xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
-                  {(person.name || "T")[0]}
-                </div>
-              )}
-              <div className="relative mt-5 font-display text-lg font-bold text-slate-900">{person.name}</div>
-              <p className="relative mt-2 text-sm leading-relaxed text-slate-600">{person.description || "Faculty"}</p>
+            <article key={person.id} className="home-lift group relative flex min-h-[250px] flex-col items-center overflow-visible rounded-2xl border border-primary-100 bg-white p-5 pt-0 text-center shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+              <div className="relative h-24 w-full shrink-0">
+                <div aria-hidden="true" className="absolute inset-x-0 top-[29px] h-px bg-gradient-to-r from-primary-100 via-primary-500 to-accent-400" />
+                {person.image ? (
+                  <PhotoViewer src={person.image} alt={person.name || "Faculty member"} className="absolute left-1/2 top-0 z-20 h-32 w-32 -translate-x-1/2 -translate-y-[35px] rounded-full ring-4 ring-white shadow-lg" imageClassName="h-full w-full rounded-full object-cover" />
+                ) : (
+                  <div className="absolute left-1/2 top-0 z-20 flex h-32 w-32 -translate-x-1/2 -translate-y-[35px] items-center justify-center rounded-full bg-primary-100 text-4xl font-bold text-primary-700 ring-4 ring-white shadow-lg">
+                    {(person.name || "T")[0]}
+                  </div>
+                )}
+              </div>
+              <div className="mt-2 font-display text-lg font-bold text-slate-900">{person.name}</div>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{person.description || "Faculty"}</p>
             </article>
           ))}
           {!websiteFaculty.length && <p className="text-center text-slate-400 md:col-span-4">Faculty list will be updated soon.</p>}
@@ -307,12 +309,12 @@ export default async function HomePage() {
               <p className="flex gap-3"><span aria-hidden="true">✉️</span>{contact.email}</p>
             </div>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-white/15 bg-white/5 shadow-2xl shadow-black/30">
-            <iframe src={contact.map_embed} width="100%" height="320" className="block w-full align-bottom" style={{ border: 0, display: "block", verticalAlign: "bottom" }} loading="lazy" title="School map" />
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/15 bg-slate-950 shadow-2xl shadow-black/30">
+            <iframe src={contact.map_embed} title="School map" className="absolute inset-0 block h-full w-full border-0" loading="lazy" />
           </div>
         </div>
       </section>
-      <SiteFooter />
+      <SiteFooter withTopMargin={false} />
     </>
   );
 }

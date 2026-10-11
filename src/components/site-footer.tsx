@@ -1,6 +1,6 @@
 import { getSettings, getProfile } from "@/lib/auth";
 
-export default async function SiteFooter() {
+export default async function SiteFooter({ withTopMargin = true }: { withTopMargin?: boolean }) {
   const s = await getSettings();
   const profile = await getProfile();
   return (
@@ -8,7 +8,7 @@ export default async function SiteFooter() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 py-2 text-[10px] shadow-[0_-4px_18px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
       {[['/downloads', '⬇', 'Downloads'], ['/#notices', '📢', 'Notices'], [profile ? (profile.role === "student" ? "/portal" : "/admin") : "/login", '🔐', profile ? 'Dashboard' : 'Login / Dashboard'], ['/gallery', '▦', 'Gallery'], ['/admissions', '📝', 'Admission']].map(([href, icon, label]) => <a key={href} href={href} className="flex min-w-0 flex-col items-center gap-0.5 text-slate-600"><span className="text-base">{icon}</span><span className="truncate">{label}</span></a>)}
     </nav>
-    <footer className="mt-20 bg-slate-900 pb-20 text-slate-300 md:pb-0">
+    <footer className={`${withTopMargin ? "mt-20" : ""} bg-slate-900 pb-20 text-slate-300 md:pb-0`}>
       <div className="page-wrap grid gap-10 py-14 md:grid-cols-2">
         <div>
           <div className="font-display text-xl font-bold text-white">{s.school_name}</div>
