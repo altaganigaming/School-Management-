@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { removePushSubscription, savePushSubscription } from "@/lib/actions/push";
 
 type FirebaseCompat = {
@@ -24,28 +24,48 @@ const FIREBASE_CONFIG = {
 };
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || "";
 const FIREBASE_SDK = "10.14.1";
+const scriptLoads = new Map<string, Promise<void>>();
 
 function configReady() {
-  return Object.values(FIREBASE_CONFIG).every(Boolean) && Boolean(VAPID_KEY);
+  return Boolean(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.messagingSenderId && FIREBASE_CONFIG.appId && VAPID_KEY);
 }
 
 function loadScript(src: string) {
-  return new Promise<void>((resolve, reject) => {
+  const inFlight = scriptLoads.get(src);
+  if (inFlight) return inFlight;
+  const load = new Promise<void>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
     if (existing?.dataset.loaded === "true") return resolve();
     const script = existing || document.createElement("script");
     script.src = src;
     script.async = true;
     script.onload = () => { script.dataset.loaded = "true"; resolve(); };
-    script.onerror = () => reject(new Error("Firebase SDK could not load."));
+    script.onerror = () => {
+      scriptLoads.delete(src);
+      reject(new Error("Firebase SDK could not load."));
+    };
     if (!existing) document.head.appendChild(script);
   });
+  scriptLoads.set(src, load);
+  return load;
 }
 
 function firebaseWorkerUrl() {
   const url = new URL("/firebase-messaging-sw.js", window.location.origin);
-  Object.entries(FIREBASE_CONFIG).forEach(([key, value]) => url.searchParams.set(key, value));
+  Object.entries(FIREBASE_CONFIG).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, value);
+  });
   return url.toString();
+}
+
+function isIOSDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isInstalledPwa() {
+  return window.matchMedia("(display-mode: standalone)").matches
+    || ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
 }
 
 function deviceKey(profileId: string) {
@@ -62,13 +82,15 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
   const [message, setMessage] = useState("");
   const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [isEnabling, setIsEnabling] = useState(false);
+  const foregroundUnsubscribe = useRef<(() => void) | null>(null);
   const configured = configReady();
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
+    if (!configured || !("serviceWorker" in navigator)) return;
     const url = firebaseWorkerUrl();
     navigator.serviceWorker.register(url, { scope: "/" }).catch(() => undefined);
-  }, []);
+  }, [configured]);
 
   useEffect(() => {
     const captureInstallPrompt = (event: Event) => {
@@ -79,6 +101,8 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
     return () => window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
   }, []);
 
+  useEffect(() => () => foregroundUnsubscribe.current?.(), []);
+
   useEffect(() => {
     if (!configured || !("Notification" in window) || Notification.permission !== "default") return;
     const promptKey = `wfa-erp-push-prompt:${profileId}`;
@@ -86,6 +110,7 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
   }, [configured, profileId]);
 
   async function enableNotifications() {
+    if (isEnabling) return;
     if (!configured) {
       setMessage("Firebase web settings are not configured yet. See the setup guide.");
       return;
@@ -94,10 +119,22 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
       setMessage("Push notifications require HTTPS and a browser that supports notifications.");
       return;
     }
+    if (isIOSDevice() && !isInstalledPwa()) {
+      setMessage("On iPhone/iPad, install this ERP with Share → Add to Home Screen first, then enable notifications from the installed app.");
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setMessage("Notifications are blocked. Allow them for this site in browser settings, then try again.");
+      return;
+    }
+
+    setIsEnabling(true);
     try {
-      const permission = await Notification.requestPermission();
+      const permission = Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission();
       if (permission !== "granted") {
-        setMessage(permission === "denied" ? "Notifications are blocked in browser settings." : "Notification permission was not granted.");
+        setMessage("Notification permission was not granted. You can allow it later in browser settings.");
         return;
       }
       await loadScript(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK}/firebase-app-compat.js`);
@@ -114,16 +151,25 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
       setMessage(result.message);
       window.localStorage.setItem(`wfa-erp-push-prompt:${profileId}`, "enabled");
       setShowPrompt(false);
-      firebase.messaging().onMessage((payload) => {
-        if (!payload.data || Notification.permission !== "granted") return;
-        const notification = new Notification(payload.data.title || "Well Future Academy", {
-          body: payload.data.body || "You have a new ERP update.",
-          icon: "/academy-icon.svg",
+      if (!foregroundUnsubscribe.current) {
+        foregroundUnsubscribe.current = firebase.messaging().onMessage((payload) => {
+          if (!payload.data || Notification.permission !== "granted") return;
+          const notification = new Notification(payload.data.title || "Well Future Academy", {
+            body: payload.data.body || "You have a new ERP update.",
+            icon: "/academy-icon.svg",
+          });
+          notification.onclick = () => {
+            notification.close();
+            const target = new URL(payload.data?.url || "/portal", window.location.origin);
+            if (target.origin === window.location.origin) window.location.assign(target.href);
+          };
         });
-        notification.onclick = () => window.location.assign(payload.data?.url || "/portal");
-      });
-    } catch {
+      }
+    } catch (error) {
+      console.error("Unable to enable Firebase notifications:", error);
       setMessage("Notifications could not be enabled. Check the Firebase setup and try again.");
+    } finally {
+      setIsEnabling(false);
     }
   }
 
@@ -140,11 +186,18 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
 
   async function installApp() {
     if (installPrompt) {
-      await installPrompt.prompt();
-      setInstallPrompt(null);
+      try {
+        await installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        setMessage(choice.outcome === "accepted" ? "Well Future Academy ERP was installed." : "Installation was dismissed. You can install it later from the browser menu.");
+      } catch {
+        setMessage("The install prompt could not be opened. Use the browser menu’s Install app option.");
+      } finally {
+        setInstallPrompt(null);
+      }
       return;
     }
-    setMessage(/iphone|ipad|ipod/i.test(navigator.userAgent)
+    setMessage(isIOSDevice()
       ? "To install on iPhone/iPad: tap Share, then Add to Home Screen."
       : "To install: open the browser menu and choose Install app or Add to Home screen.");
   }
@@ -158,9 +211,9 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
     <>
       <div className={compact ? "relative" : "mt-4 border-t border-slate-800 pt-3"}>
         <div className={`flex ${compact ? "gap-1" : "flex-wrap gap-2"}`}>
-          <button type="button" onClick={enableNotifications}
+          <button type="button" onClick={enableNotifications} disabled={isEnabling}
             className="btn-secondary btn-sm" title="Enable push notifications on this device">
-            {compact ? "🔔" : "Enable Notifications"}
+            {isEnabling ? "Enabling…" : compact ? "🔔" : "Enable Notifications"}
           </button>
           <button type="button" onClick={installApp} className="btn-secondary btn-sm" title="Install Well Future Academy ERP">
             {compact ? "Install" : "Install App"}
@@ -179,7 +232,8 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
           <p className="mt-3 text-sm leading-relaxed text-slate-600">Get relevant school updates on this device, including leave status or homework for your class.</p>
           <div className="mt-5 flex flex-wrap justify-end gap-2">
             <button type="button" onClick={dismissPrompt} className="btn-secondary">Not now</button>
-            <button type="button" onClick={enableNotifications} className="btn-primary">Enable Notifications</button>
+            {isIOSDevice() && !isInstalledPwa() && <button type="button" onClick={installApp} className="btn-secondary">Install App</button>}
+            <button type="button" onClick={enableNotifications} disabled={isEnabling} className="btn-primary">{isEnabling ? "Enabling…" : "Enable Notifications"}</button>
           </div>
           <p className="mt-3 text-xs text-slate-400">You can change notification permission later in your browser settings.</p>
         </section>

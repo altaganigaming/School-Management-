@@ -38,6 +38,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description: "Premium school website and management system.",
     manifest: "/manifest.webmanifest",
     icons: { icon: "/academy-icon.svg" },
+    appleWebApp: {
+      capable: true,
+      title: "WFA ERP",
+      statusBarStyle: "default",
+    },
   };
 }
 
