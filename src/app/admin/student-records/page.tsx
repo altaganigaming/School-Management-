@@ -20,6 +20,10 @@ function dateLabel(value: string | null | undefined) {
   return value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN") : "—";
 }
 
+function rowsOf<T>(result: { data: T[] | null } | T[] | undefined): T[] {
+  return Array.isArray(result) ? result : result?.data || [];
+}
+
 export default async function IndividualStudentRecordsPage({
   searchParams,
 }: {
@@ -51,8 +55,14 @@ export default async function IndividualStudentRecordsPage({
     requestedSections.has("academics") && student.class_id ? admin.from("homework").select("title, description, due_date, created_at, subjects(name)").eq("class_id", student.class_id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     requestedSections.has("academics") && student.class_id ? admin.from("study_materials").select("title, description, created_at, subjects(name)").or(`class_id.is.null,class_id.eq.${student.class_id}`).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
   ]) : [[], [], [], [], [], [], [], []];
-  const feeRows = Array.isArray(fees) ? [] : fees.data || [];
-  const attendanceRows = Array.isArray(attendance) ? [] : attendance.data || [];
+  const feeRows = rowsOf(fees);
+  const receiptRows = rowsOf(receipts);
+  const proofRows = rowsOf(proofs);
+  const attendanceRows = rowsOf(attendance);
+  const leaveRows = rowsOf(leaves);
+  const resultRows = rowsOf(results);
+  const homeworkRows = rowsOf(homework);
+  const materialRows = rowsOf(materials);
   const paidTotal = feeRows.filter((row) => row.status === "paid").reduce((sum, row) => sum + Number(row.amount), 0);
   const pendingTotal = feeRows.filter((row) => row.status === "pending").reduce((sum, row) => sum + Number(row.amount), 0);
   const presentDays = attendanceRows.filter((row) => row.status === "present").length;
@@ -106,16 +116,16 @@ export default async function IndividualStudentRecordsPage({
           <h3 className="mb-2 border-b border-slate-300 pb-1 font-bold">Fee Ledger</h3>
           <p className="mb-2 text-xs">Paid total: {formatCurrency(paidTotal)} · Pending total: {formatCurrency(pendingTotal)} · {feeRows.length} fee month(s)</p>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Month</th><th className="p-1">Amount</th><th className="p-1">Status</th><th className="p-1">Paid On</th></tr></thead>
-            <tbody>{(fees.data || []).map((row, index) => <tr key={`${row.month}-${index}`} className="border-b"><td className="p-1">{monthLabel(row.month)}</td><td className="p-1">{formatCurrency(row.amount)}</td><td className="p-1 capitalize">{row.status}</td><td className="p-1">{dateLabel(row.paid_at)}</td></tr>)}</tbody>
+            <tbody>{feeRows.map((row, index) => <tr key={`${row.month}-${index}`} className="border-b"><td className="p-1">{monthLabel(row.month)}</td><td className="p-1">{formatCurrency(row.amount)}</td><td className="p-1 capitalize">{row.status}</td><td className="p-1">{dateLabel(row.paid_at)}</td></tr>)}</tbody>
           </table>
-          {!fees.data?.length && <p className="text-xs text-slate-500">No fee ledger entries.</p>}
+          {!feeRows.length && <p className="text-xs text-slate-500">No fee ledger entries.</p>}
           <h4 className="mb-1 mt-4 font-semibold">Issued Receipts</h4>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Receipt No.</th><th className="p-1">Month</th><th className="p-1">Amount</th><th className="p-1">Method</th><th className="p-1">Issued</th></tr></thead>
-            <tbody>{(receipts.data || []).map((row) => <tr key={row.receipt_no} className="border-b"><td className="p-1">{row.receipt_no}</td><td className="p-1">{monthLabel(row.month)}</td><td className="p-1">{formatCurrency(row.amount)}</td><td className="p-1 capitalize">{row.method || "—"}</td><td className="p-1">{dateLabel(row.issued_at)}</td></tr>)}</tbody>
+            <tbody>{receiptRows.map((row) => <tr key={row.receipt_no} className="border-b"><td className="p-1">{row.receipt_no}</td><td className="p-1">{monthLabel(row.month)}</td><td className="p-1">{formatCurrency(row.amount)}</td><td className="p-1 capitalize">{row.method || "—"}</td><td className="p-1">{dateLabel(row.issued_at)}</td></tr>)}</tbody>
           </table>
           <h4 className="mb-1 mt-4 font-semibold">Payment Proof Submissions</h4>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Submitted</th><th className="p-1">Month</th><th className="p-1">Amount</th><th className="p-1">Method</th><th className="p-1">Status</th></tr></thead>
-            <tbody>{(proofs.data || []).map((row, index) => <tr key={`${row.month}-${row.created_at}-${index}`} className="border-b"><td className="p-1">{dateLabel(row.created_at)}</td><td className="p-1">{monthLabel(row.month)}</td><td className="p-1">{formatCurrency(row.amount)}</td><td className="p-1 capitalize">{row.method}</td><td className="p-1 capitalize">{row.status}{row.rejection_reason ? ` · ${row.rejection_reason}` : ""}</td></tr>)}</tbody>
+            <tbody>{proofRows.map((row, index) => <tr key={`${row.month}-${row.created_at}-${index}`} className="border-b"><td className="p-1">{dateLabel(row.created_at)}</td><td className="p-1">{monthLabel(row.month)}</td><td className="p-1">{formatCurrency(row.amount)}</td><td className="p-1 capitalize">{row.method}</td><td className="p-1 capitalize">{row.status}{row.rejection_reason ? ` · ${row.rejection_reason}` : ""}</td></tr>)}</tbody>
           </table>
         </section>}
 
@@ -123,35 +133,35 @@ export default async function IndividualStudentRecordsPage({
           <h3 className="mb-2 border-b border-slate-300 pb-1 font-bold">Attendance</h3>
           <p className="mb-2 text-xs">Present: {presentDays} day(s) · Absent: {absentDays} day(s) · Other: {otherDays} day(s) · Total recorded: {attendanceRows.length} day(s)</p>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Date</th><th className="p-1">Status</th><th className="p-1">Note</th></tr></thead>
-            <tbody>{(attendance.data || []).map((row, index) => <tr key={`${row.date}-${index}`} className="border-b"><td className="p-1">{dateLabel(row.date)}</td><td className="p-1 capitalize">{row.status}</td><td className="p-1">{row.note || "—"}</td></tr>)}</tbody>
+            <tbody>{attendanceRows.map((row, index) => <tr key={`${row.date}-${index}`} className="border-b"><td className="p-1">{dateLabel(row.date)}</td><td className="p-1 capitalize">{row.status}</td><td className="p-1">{row.note || "—"}</td></tr>)}</tbody>
           </table>
-          {!attendance.data?.length && <p className="text-xs text-slate-500">No attendance entries.</p>}
+          {!attendanceRows.length && <p className="text-xs text-slate-500">No attendance entries.</p>}
         </section>}
 
         {requestedSections.has("leave") && <section className="break-inside-avoid">
           <h3 className="mb-2 border-b border-slate-300 pb-1 font-bold">Leave Requests</h3>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Dates</th><th className="p-1">Type</th><th className="p-1">Reason</th><th className="p-1">Status / Review</th></tr></thead>
-            <tbody>{(leaves.data || []).map((row, index) => <tr key={`${row.created_at}-${index}`} className="border-b align-top"><td className="p-1">{dateLabel(row.from_date)} – {dateLabel(row.to_date)}</td><td className="p-1 capitalize">{row.type}</td><td className="p-1">{row.reason || "—"}</td><td className="p-1 capitalize">{row.status}{row.review_note ? ` · ${row.review_note}` : ""}</td></tr>)}</tbody>
+            <tbody>{leaveRows.map((row, index) => <tr key={`${row.created_at}-${index}`} className="border-b align-top"><td className="p-1">{dateLabel(row.from_date)} – {dateLabel(row.to_date)}</td><td className="p-1 capitalize">{row.type}</td><td className="p-1">{row.reason || "—"}</td><td className="p-1 capitalize">{row.status}{row.review_note ? ` · ${row.review_note}` : ""}</td></tr>)}</tbody>
           </table>
-          {!leaves.data?.length && <p className="text-xs text-slate-500">No leave requests.</p>}
+          {!leaveRows.length && <p className="text-xs text-slate-500">No leave requests.</p>}
         </section>}
 
         {requestedSections.has("exams") && <section className="break-inside-avoid">
           <h3 className="mb-2 border-b border-slate-300 pb-1 font-bold">Exam Results</h3>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Exam</th><th className="p-1">Subject</th><th className="p-1">Marks</th><th className="p-1">Grade</th></tr></thead>
-            <tbody>{(results.data || []).map((row, index) => <tr key={`${row.exam_id}-${index}`} className="border-b"><td className="p-1">{Array.isArray(row.exams) ? row.exams[0]?.name : row.exams?.name}</td><td className="p-1">{Array.isArray(row.subjects) ? row.subjects[0]?.name : row.subjects?.name}</td><td className="p-1">{row.marks} / {row.max_marks}</td><td className="p-1">{row.grade || "—"}</td></tr>)}</tbody>
+            <tbody>{resultRows.map((row, index) => <tr key={`${row.exam_id}-${index}`} className="border-b"><td className="p-1">{Array.isArray(row.exams) ? row.exams[0]?.name : row.exams?.name}</td><td className="p-1">{Array.isArray(row.subjects) ? row.subjects[0]?.name : row.subjects?.name}</td><td className="p-1">{row.marks} / {row.max_marks}</td><td className="p-1">{row.grade || "—"}</td></tr>)}</tbody>
           </table>
-          {!results.data?.length && <p className="text-xs text-slate-500">No exam results.</p>}
+          {!resultRows.length && <p className="text-xs text-slate-500">No exam results.</p>}
         </section>}
 
         {requestedSections.has("academics") && <section className="break-inside-avoid">
           <h3 className="mb-2 border-b border-slate-300 pb-1 font-bold">Class Homework & Materials</h3>
           <h4 className="mb-1 font-semibold">Homework</h4>
-          <ul className="list-disc space-y-1 pl-5 text-xs">{(homework.data || []).map((row, index) => <li key={`${row.title}-${index}`}><b>{row.title}</b> · {Array.isArray(row.subjects) ? row.subjects[0]?.name : row.subjects?.name || "General"} · due {dateLabel(row.due_date)}{row.description ? ` · ${row.description}` : ""}</li>)}</ul>
-          {!homework.data?.length && <p className="text-xs text-slate-500">No class homework entries.</p>}
+          <ul className="list-disc space-y-1 pl-5 text-xs">{homeworkRows.map((row, index) => <li key={`${row.title}-${index}`}><b>{row.title}</b> · {Array.isArray(row.subjects) ? row.subjects[0]?.name : row.subjects?.name || "General"} · due {dateLabel(row.due_date)}{row.description ? ` · ${row.description}` : ""}</li>)}</ul>
+          {!homeworkRows.length && <p className="text-xs text-slate-500">No class homework entries.</p>}
           <h4 className="mb-1 mt-3 font-semibold">Study Materials</h4>
-          <ul className="list-disc space-y-1 pl-5 text-xs">{(materials.data || []).map((row, index) => <li key={`${row.title}-${index}`}><b>{row.title}</b> · {Array.isArray(row.subjects) ? row.subjects[0]?.name : row.subjects?.name || "General"}{row.description ? ` · ${row.description}` : ""}</li>)}</ul>
-          {!materials.data?.length && <p className="text-xs text-slate-500">No class study materials.</p>}
+          <ul className="list-disc space-y-1 pl-5 text-xs">{materialRows.map((row, index) => <li key={`${row.title}-${index}`}><b>{row.title}</b> · {Array.isArray(row.subjects) ? row.subjects[0]?.name : row.subjects?.name || "General"}{row.description ? ` · ${row.description}` : ""}</li>)}</ul>
+          {!materialRows.length && <p className="text-xs text-slate-500">No class study materials.</p>}
         </section>}
       </main> : studentId ? <div className="card mt-6"><EmptyState message="That student record could not be found." /></div> : null}
     </>
