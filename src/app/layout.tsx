@@ -36,6 +36,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: schoolName, template: `%s | ${schoolName}` },
     description: "Premium school website and management system.",
+    manifest: "/manifest.webmanifest",
+    icons: { icon: "/academy-icon.svg" },
   };
 }
 

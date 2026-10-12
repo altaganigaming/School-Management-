@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin, requireLogin, requireStudent } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { triggerPush } from "@/lib/push-delivery";
 
 function isValidDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -40,14 +41,15 @@ export async function submitLeave(formData: FormData) {
   if (!isValidDate(fromDate) || !isValidDate(toDate) || fromDate > toDate || !reason
     || !["casual", "sick", "other"].includes(type)) redirect(`${destination}?error=invalid`);
   const supabase = await createClient();
-  const { error } = await supabase.from("leave_requests").insert({
+  const { data: request, error } = await supabase.from("leave_requests").insert({
     profile_id: profile.id,
     type,
     from_date: fromDate,
     to_date: toDate,
     reason,
-  });
-  if (error) redirect(`${destination}?error=save`);
+  }).select("id").single();
+  if (error || !request) redirect(`${destination}?error=save`);
+  await triggerPush("leave_submitted", request.id);
   revalidatePath(destination);
   revalidatePath("/admin");
   redirect(`${destination}?submitted=1`);
@@ -62,14 +64,17 @@ export async function reviewLeaveRequest(formData: FormData) {
   if (status === "rejected" && !reviewNote) redirect("/admin?leave_error=note");
 
   const supabase = await createClient();
-  const { error } = await supabase.from("leave_requests").update({
+  const { data: reviewedRequest, error } = await supabase.from("leave_requests").update({
     status,
     review_note: reviewNote || null,
     reviewed_by: reviewer.id,
   })
     .eq("id", requestId)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("id, status")
+    .maybeSingle();
   if (error) redirect("/admin/leave?error=save");
+  if (reviewedRequest) await triggerPush("leave_reviewed", reviewedRequest.id);
   revalidatePath("/admin");
   revalidatePath("/admin/leave");
   revalidatePath("/portal/attendance");

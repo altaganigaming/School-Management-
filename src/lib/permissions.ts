@@ -64,6 +64,7 @@ export const ADMIN_MODULES: NavModule[] = [
   { href: "/admin/events", label: "Events", icon: "🎉", perm: "manage_events" },
   { href: "/admin/achievements", label: "Achievements", icon: "🏆", perm: "manage_achievements" },
   { href: "/admin/reports", label: "Reports", icon: "📊", perm: "manage_fees" },
+  { href: "/admin/student-records", label: "Individual Student Records", icon: "🗂️", perm: null, superOnly: true },
   { href: "/admin/users", label: "Users & Accounts", icon: "👥", perm: null, superOnly: true },
   { href: "/admin/roles", label: "Roles & Permissions", icon: "🔐", perm: null, superOnly: true },
   { href: "/admin/settings", label: "School Settings", icon: "⚙️", perm: null, superOnly: true },

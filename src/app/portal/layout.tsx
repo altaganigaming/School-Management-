@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireLogin } from "@/lib/auth";
 import { logout } from "@/lib/actions/auth";
+import { PushNotifications } from "@/components/push-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function PortalLayout({ children }: { children: React.React
           <Link href="/portal" className="font-display font-bold text-slate-900">🎓 {profile.role === "student" ? "Student" : profile.role === "teacher" ? "Teacher" : "Staff"} Portal</Link>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden sm:block text-slate-500">{profile.full_name}</span>
+            <PushNotifications profileId={profile.id} compact />
             <form action={logout}><button className="btn-danger btn-sm">Logout</button></form>
           </div>
         </div>

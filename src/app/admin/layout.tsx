@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { logout } from "@/lib/actions/auth";
 import { ADMIN_MODULES, hasPerm, ROLE_LABELS } from "@/lib/permissions";
+import { PushNotifications } from "@/components/push-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/" className="btn-secondary btn-sm flex-1">Website</Link>
             {profile.role !== "super_admin" && <Link href="/portal" className="btn-secondary btn-sm flex-1">My Portal</Link>}
           </div>
+          <PushNotifications profileId={profile.id} />
           <form action={logout} className="mt-2"><button className="btn-danger btn-sm w-full">Logout</button></form>
         </div>
       </aside>
@@ -46,6 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="font-display font-bold text-slate-900">🏫 Admin</Link>
           <div className="flex items-center gap-2">
             {profile.role !== "super_admin" && <Link href="/portal" className="btn-secondary btn-sm">My Portal</Link>}
+            <PushNotifications profileId={profile.id} compact />
             <form action={logout}><button className="btn-danger btn-sm">Logout</button></form>
           </div>
         </div>

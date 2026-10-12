@@ -1,0 +1,18 @@
+{
+  "name": "Well Future Academy ERP",
+  "short_name": "WFA ERP",
+  "description": "Well Future Academy student and staff portal",
+  "start_url": "/portal",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#274ce4",
+  "icons": [
+    {
+      "src": "/academy-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

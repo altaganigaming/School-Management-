@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { PageHeader, Badge, EmptyState } from "@/components/ui";
+import { triggerPush } from "@/lib/push-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +20,16 @@ async function addHomework(formData: FormData) {
   }
   const { data: classRecord } = await admin.from("classes").select("id").eq("id", classId).maybeSingle();
   if (!classRecord) return;
-  const { error } = await admin.from("homework").insert({
+  const { data: homework, error } = await admin.from("homework").insert({
     class_id: classId,
     subject_id: subjectId || null,
     title: String(formData.get("title")),
     description: String(formData.get("description")),
     due_date: String(formData.get("due_date")) || null,
     created_by: profile.id,
-  });
-  if (error) return;
+  }).select("id").single();
+  if (error || !homework) return;
+  await triggerPush("homework_published", homework.id);
   const { revalidatePath } = await import("next/cache");
   revalidatePath("/admin/homework");
   revalidatePath("/portal/homework");
