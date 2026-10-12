@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { removePushSubscription, savePushSubscription } from "@/lib/actions/push";
 
 type FirebaseCompat = {
@@ -13,6 +13,32 @@ type FirebaseCompat = {
 };
 
 type InstallPrompt = Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
+
+const installPromptListeners = new Set<(prompt: InstallPrompt | null) => void>();
+const foregroundListeners = new Map<string, () => void>();
+let deferredInstallPrompt: InstallPrompt | null = null;
+let installPromptEventsRegistered = false;
+
+function publishInstallPrompt(prompt: InstallPrompt | null) {
+  deferredInstallPrompt = prompt;
+  installPromptListeners.forEach((listener) => listener(prompt));
+}
+
+function subscribeInstallPrompt(listener: (prompt: InstallPrompt | null) => void) {
+  if (!installPromptEventsRegistered) {
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      publishInstallPrompt(event as InstallPrompt);
+    });
+    window.addEventListener("appinstalled", () => publishInstallPrompt(null));
+    installPromptEventsRegistered = true;
+  }
+  installPromptListeners.add(listener);
+  listener(deferredInstallPrompt);
+  return () => {
+    installPromptListeners.delete(listener);
+  };
+}
 
 const FIREBASE_CONFIG = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -78,41 +104,57 @@ function deviceKey(profileId: string) {
   return value;
 }
 
-export function PushNotifications({ profileId, compact = false }: { profileId: string; compact?: boolean }) {
+export function PushNotifications({ profileId, compact = false, responsivePrompt = false }: { profileId: string; compact?: boolean; responsivePrompt?: boolean }) {
   const [message, setMessage] = useState("");
   const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isEnabling, setIsEnabling] = useState(false);
-  const foregroundUnsubscribe = useRef<(() => void) | null>(null);
   const configured = configReady();
 
   useEffect(() => {
     if (!configured || !("serviceWorker" in navigator)) return;
     const url = firebaseWorkerUrl();
-    navigator.serviceWorker.register(url, { scope: "/" }).catch(() => undefined);
+    navigator.serviceWorker.register(url, { scope: "/" }).catch((error) => {
+      console.error("Firebase service worker registration failed:", error);
+      setMessage("This browser could not register the notification worker. Refresh the page and try again.");
+    });
   }, [configured]);
 
-  useEffect(() => {
-    const captureInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPrompt);
-    };
-    window.addEventListener("beforeinstallprompt", captureInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
-  }, []);
+  useEffect(() => subscribeInstallPrompt(setInstallPrompt), []);
 
-  useEffect(() => () => foregroundUnsubscribe.current?.(), []);
+  useEffect(() => () => {
+    const unsubscribe = foregroundListeners.get(profileId);
+    if (unsubscribe) {
+      unsubscribe();
+      foregroundListeners.delete(profileId);
+    }
+  }, [profileId]);
 
   useEffect(() => {
     if (!configured || !("Notification" in window) || Notification.permission !== "default") return;
     const promptKey = `wfa-erp-push-prompt:${profileId}`;
-    if (window.localStorage.getItem(promptKey) !== "dismissed") setShowPrompt(true);
-  }, [configured, profileId]);
+    const updatePrompt = (isVisibleInstance: boolean) => {
+      if (!isVisibleInstance) {
+        setShowPrompt(false);
+        return;
+      }
+      setShowPrompt(window.localStorage.getItem(promptKey) !== "dismissed" && window.localStorage.getItem(promptKey) !== "enabled");
+    };
+    if (!responsivePrompt) {
+      updatePrompt(true);
+      return;
+    }
+    const media = window.matchMedia(compact ? "(max-width: 1023px)" : "(min-width: 1024px)");
+    const onViewportChange = () => updatePrompt(media.matches);
+    onViewportChange();
+    media.addEventListener("change", onViewportChange);
+    return () => media.removeEventListener("change", onViewportChange);
+  }, [compact, configured, profileId, responsivePrompt]);
 
   async function enableNotifications() {
     if (isEnabling) return;
     if (!configured) {
-      setMessage("Firebase web settings are not configured yet. See the setup guide.");
+      setMessage("Firebase web settings are missing from this deployment. Add the NEXT_PUBLIC_FIREBASE_* values in Vercel and redeploy.");
       return;
     }
     if (!window.isSecureContext || !("Notification" in window) || !("serviceWorker" in navigator)) {
@@ -151,8 +193,8 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
       setMessage(result.message);
       window.localStorage.setItem(`wfa-erp-push-prompt:${profileId}`, "enabled");
       setShowPrompt(false);
-      if (!foregroundUnsubscribe.current) {
-        foregroundUnsubscribe.current = firebase.messaging().onMessage((payload) => {
+      if (!foregroundListeners.has(profileId)) {
+        foregroundListeners.set(profileId, firebase.messaging().onMessage((payload) => {
           if (!payload.data || Notification.permission !== "granted") return;
           const notification = new Notification(payload.data.title || "Well Future Academy", {
             body: payload.data.body || "You have a new ERP update.",
@@ -163,7 +205,7 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
             const target = new URL(payload.data?.url || "/portal", window.location.origin);
             if (target.origin === window.location.origin) window.location.assign(target.href);
           };
-        });
+        }));
       }
     } catch (error) {
       console.error("Unable to enable Firebase notifications:", error);
@@ -193,7 +235,7 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
       } catch {
         setMessage("The install prompt could not be opened. Use the browser menu’s Install app option.");
       } finally {
-        setInstallPrompt(null);
+        publishInstallPrompt(null);
       }
       return;
     }
