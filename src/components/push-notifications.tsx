@@ -61,6 +61,7 @@ function deviceKey(profileId: string) {
 export function PushNotifications({ profileId, compact = false }: { profileId: string; compact?: boolean }) {
   const [message, setMessage] = useState("");
   const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
   const configured = configReady();
 
   useEffect(() => {
@@ -77,6 +78,12 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
     window.addEventListener("beforeinstallprompt", captureInstallPrompt);
     return () => window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
   }, []);
+
+  useEffect(() => {
+    if (!configured || !("Notification" in window) || Notification.permission !== "default") return;
+    const promptKey = `wfa-erp-push-prompt:${profileId}`;
+    if (window.localStorage.getItem(promptKey) !== "dismissed") setShowPrompt(true);
+  }, [configured, profileId]);
 
   async function enableNotifications() {
     if (!configured) {
@@ -105,6 +112,8 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
       const result = await savePushSubscription(token, deviceKey(profileId));
       if (!result.ok) throw new Error(result.message);
       setMessage(result.message);
+      window.localStorage.setItem(`wfa-erp-push-prompt:${profileId}`, "enabled");
+      setShowPrompt(false);
       firebase.messaging().onMessage((payload) => {
         if (!payload.data || Notification.permission !== "granted") return;
         const notification = new Notification(payload.data.title || "Well Future Academy", {
@@ -140,20 +149,41 @@ export function PushNotifications({ profileId, compact = false }: { profileId: s
       : "To install: open the browser menu and choose Install app or Add to Home screen.");
   }
 
+  function dismissPrompt() {
+    window.localStorage.setItem(`wfa-erp-push-prompt:${profileId}`, "dismissed");
+    setShowPrompt(false);
+  }
+
   return (
-    <div className={compact ? "relative" : "mt-4 border-t border-slate-800 pt-3"}>
-      <div className={`flex ${compact ? "gap-1" : "flex-wrap gap-2"}`}>
-        <button type="button" onClick={enableNotifications}
-          className={compact ? "btn-secondary btn-sm" : "btn-secondary btn-sm"} title="Enable push notifications on this device">
-          {compact ? "🔔" : "Enable Notifications"}
-        </button>
-        <button type="button" onClick={installApp} className="btn-secondary btn-sm" title="Install Well Future Academy ERP">
-          {compact ? "Install" : "Install App"}
-        </button>
-        {!compact && <button type="button" onClick={disableNotifications} className="btn-secondary btn-sm" title="Remove this device from push notifications">Disable</button>}
+    <>
+      <div className={compact ? "relative" : "mt-4 border-t border-slate-800 pt-3"}>
+        <div className={`flex ${compact ? "gap-1" : "flex-wrap gap-2"}`}>
+          <button type="button" onClick={enableNotifications}
+            className="btn-secondary btn-sm" title="Enable push notifications on this device">
+            {compact ? "🔔" : "Enable Notifications"}
+          </button>
+          <button type="button" onClick={installApp} className="btn-secondary btn-sm" title="Install Well Future Academy ERP">
+            {compact ? "Install" : "Install App"}
+          </button>
+          {!compact && <button type="button" onClick={disableNotifications} className="btn-secondary btn-sm" title="Remove this device from push notifications">Disable</button>}
+        </div>
+        {!compact && <p className="mt-2 text-[11px] leading-relaxed text-slate-400">Install guidance: use the browser menu’s Install app option; on iPhone/iPad use Share → Add to Home Screen. Notifications require HTTPS and permission on each device.</p>}
+        {message && <p role="status" className={compact ? "absolute right-0 top-full z-40 mt-2 w-64 rounded-lg bg-white p-3 text-xs text-slate-700 shadow-lg ring-1 ring-slate-200" : "mt-2 text-xs text-slate-300"}>{message}</p>}
       </div>
-      {!compact && <p className="mt-2 text-[11px] leading-relaxed text-slate-400">Install guidance: use the browser menu’s Install app option; on iPhone/iPad use Share → Add to Home Screen. Notifications require HTTPS and permission on each device.</p>}
-      {message && <p role="status" className={compact ? "absolute right-0 top-full z-40 mt-2 w-64 rounded-lg bg-white p-3 text-xs text-slate-700 shadow-lg ring-1 ring-slate-200" : "mt-2 text-xs text-slate-300"}>{message}</p>}
-    </div>
+      {showPrompt && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4" role="presentation">
+        <section role="dialog" aria-modal="true" aria-labelledby="push-prompt-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-200">
+          <div className="flex items-start justify-between gap-4">
+            <div><p className="text-xs font-bold uppercase text-primary-700">Well Future Academy</p><h2 id="push-prompt-title" className="mt-2 text-xl font-bold text-slate-900">Enable notifications?</h2></div>
+            <span className="text-2xl" aria-hidden="true">🔔</span>
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">Get relevant school updates on this device, including leave status or homework for your class.</p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={dismissPrompt} className="btn-secondary">Not now</button>
+            <button type="button" onClick={enableNotifications} className="btn-primary">Enable Notifications</button>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">You can change notification permission later in your browser settings.</p>
+        </section>
+      </div>}
+    </>
   );
 }

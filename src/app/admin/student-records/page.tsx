@@ -51,6 +51,13 @@ export default async function IndividualStudentRecordsPage({
     requestedSections.has("academics") && student.class_id ? admin.from("homework").select("title, description, due_date, created_at, subjects(name)").eq("class_id", student.class_id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     requestedSections.has("academics") && student.class_id ? admin.from("study_materials").select("title, description, created_at, subjects(name)").or(`class_id.is.null,class_id.eq.${student.class_id}`).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
   ]) : [[], [], [], [], [], [], [], []];
+  const feeRows = Array.isArray(fees) ? [] : fees.data || [];
+  const attendanceRows = Array.isArray(attendance) ? [] : attendance.data || [];
+  const paidTotal = feeRows.filter((row) => row.status === "paid").reduce((sum, row) => sum + Number(row.amount), 0);
+  const pendingTotal = feeRows.filter((row) => row.status === "pending").reduce((sum, row) => sum + Number(row.amount), 0);
+  const presentDays = attendanceRows.filter((row) => row.status === "present").length;
+  const absentDays = attendanceRows.filter((row) => row.status === "absent").length;
+  const otherDays = attendanceRows.length - presentDays - absentDays;
 
   return (
     <>
@@ -97,6 +104,7 @@ export default async function IndividualStudentRecordsPage({
 
         {requestedSections.has("fees") && <section className="break-inside-avoid">
           <h3 className="mb-2 border-b border-slate-300 pb-1 font-bold">Fee Ledger</h3>
+          <p className="mb-2 text-xs">Paid total: {formatCurrency(paidTotal)} · Pending total: {formatCurrency(pendingTotal)} · {feeRows.length} fee month(s)</p>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Month</th><th className="p-1">Amount</th><th className="p-1">Status</th><th className="p-1">Paid On</th></tr></thead>
             <tbody>{(fees.data || []).map((row, index) => <tr key={`${row.month}-${index}`} className="border-b"><td className="p-1">{monthLabel(row.month)}</td><td className="p-1">{formatCurrency(row.amount)}</td><td className="p-1 capitalize">{row.status}</td><td className="p-1">{dateLabel(row.paid_at)}</td></tr>)}</tbody>
           </table>
@@ -113,6 +121,7 @@ export default async function IndividualStudentRecordsPage({
 
         {requestedSections.has("attendance") && <section className="break-inside-avoid">
           <h3 className="mb-2 border-b border-slate-300 pb-1 font-bold">Attendance</h3>
+          <p className="mb-2 text-xs">Present: {presentDays} day(s) · Absent: {absentDays} day(s) · Other: {otherDays} day(s) · Total recorded: {attendanceRows.length} day(s)</p>
           <table className="w-full border-collapse text-xs"><thead><tr className="border-b text-left"><th className="p-1">Date</th><th className="p-1">Status</th><th className="p-1">Note</th></tr></thead>
             <tbody>{(attendance.data || []).map((row, index) => <tr key={`${row.date}-${index}`} className="border-b"><td className="p-1">{dateLabel(row.date)}</td><td className="p-1 capitalize">{row.status}</td><td className="p-1">{row.note || "—"}</td></tr>)}</tbody>
           </table>

@@ -3,6 +3,7 @@ import { Badge, PageHeader } from "@/components/ui";
 import { requireSuperAdmin, getSettings } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,9 @@ export default async function AdminRecordsPage() {
   return (
     <>
       <div className="print-hidden">
-        <PageHeader title="School Records" subtitle="Current active leave, fee, and attendance records." />
+        <PageHeader title="School Records" subtitle="Current active leave, fee, and attendance records." actions={
+          <Link href="/admin/student-records" className="btn-primary">Select Student Record</Link>
+        } />
         <DownloadPdfButton />
         <p className="mt-2 text-xs text-slate-500">In the print dialog, choose Save as PDF for a downloadable copy.</p>
       </div>
@@ -85,7 +88,7 @@ export default async function AdminRecordsPage() {
           <h2 className="mb-2 border-b border-slate-300 pb-1 text-sm font-bold">Student Fee Summary</h2>
           <p className="mb-2 text-xs">Paid total: {formatCurrency(paidTotal)} · Pending total: {formatCurrency(pendingTotal)}</p>
           <table className="w-full border-collapse text-[9px]">
-            <thead><tr className="border-b border-slate-300 text-left"><th className="p-1">Student</th><th className="p-1">Admission No.</th><th className="p-1">Class</th><th className="p-1">Paid</th><th className="p-1">Pending</th><th className="p-1">Months</th></tr></thead>
+            <thead><tr className="border-b border-slate-300 text-left"><th className="p-1">Student</th><th className="p-1">Admission No.</th><th className="p-1">Class</th><th className="p-1">Paid</th><th className="p-1">Pending</th><th className="p-1">Months</th><th className="p-1 print-hidden">Record</th></tr></thead>
             <tbody>{students.map((student) => {
               const fees = feesByStudent.get(student.id) || [];
               const paid = fees.filter((fee) => fee.status === "paid").reduce((sum, fee) => sum + Number(fee.amount), 0);
@@ -97,6 +100,7 @@ export default async function AdminRecordsPage() {
                 <td className="p-1">{formatCurrency(paid)}</td>
                 <td className="p-1">{formatCurrency(pending)}</td>
                 <td className="p-1">{fees.length}</td>
+                <td className="p-1 print-hidden"><Link href={`/admin/student-records?student_id=${student.id}`} className="font-semibold text-primary-700 underline">Open</Link></td>
               </tr>;
             })}</tbody>
           </table>
